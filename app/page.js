@@ -9,8 +9,6 @@ export default function Home() {
           <h1 className="text-4xl font-bold">Computer Vision Coaching</h1>
           <p>Start squating to get feedback on your form.</p>
           <CameraStream />
-          <canvas id="overlay"></canvas>
-
           <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
             Record
           </button>
