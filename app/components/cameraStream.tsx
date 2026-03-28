@@ -7,12 +7,13 @@ import {
 } from '@mediapipe/tasks-vision';
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { useSwingRecorder } from '../hooks/useSwingRecorder';
+import { calculateSwingMetrics } from '../lib/swing/calculateSwingMetrics';
 
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { landmarks, frameData } = usePoseDetection(videoRef);
-  const { startRecording, stopRecording, isRecording, resetRecording } = useSwingRecorder(frameData);
+  const { startRecording, stopRecording, isRecording, resetRecording, recordedFrames } = useSwingRecorder(frameData);
 
   useEffect(() => {
     const drawPose = (landmarksByPose: NormalizedLandmark[][]) => {
@@ -39,6 +40,13 @@ export default function CameraStream() {
 
     drawPose(landmarks);
   }, [landmarks]);
+
+  useEffect(() => {
+    if (!isRecording && recordedFrames.length > 0) {
+      const metrics = calculateSwingMetrics(recordedFrames);
+      console.log(metrics);
+    }
+  }, [isRecording]);
 
 
   return (

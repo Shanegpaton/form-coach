@@ -35,7 +35,7 @@ export type SwingAnalysis = {
       impact: number | null;
     };
 
-    hipRotation: {
+    hipTilt: {
       max: number | null;
       top: number | null;
       impact: number | null;
@@ -98,12 +98,6 @@ function midPoint2D(a: Joint, b: Joint): { x: number; y: number } {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-/** Proxy for head when nose/eyes are not in Keypoints: shoulder midpoint. */
-function headProxy(f: Keypoints): { x: number; y: number } | null {
-  if (f.leftShoulder && f.rightShoulder) return midPoint2D(f.leftShoulder, f.rightShoulder);
-  return null;
-}
-
 function hipMidpoint(f: Keypoints): { x: number; y: number } | null {
   if (f.leftHip && f.rightHip) return midPoint2D(f.leftHip, f.rightHip);
   return null;
@@ -141,6 +135,11 @@ function calculatePhases(recordedFrames: Keypoints[]) {
   let topframe = 0;
   let impactframe = 0;
   for (let i = 0; i < recordedFrames.length; i++) {
+    if (recordedFrames[i].leftWrist) {
+      console.log(recordedFrames[i].leftWrist);
+      console.log(recordedFrames[i].leftWrist.y);
+      console.log(recordedFrames[topframe].leftWrist.y);
+    }
     if (recordedFrames[i].leftWrist && recordedFrames[i].leftWrist.y > recordedFrames[topframe].leftWrist.y) {
       topframe = i;
     }
@@ -189,17 +188,17 @@ function calculatePosture(context: context) {
   // angle between right shoulder and right hip
   let  spineAngleStart = null
   if (context.setupFrame.rightShoulder && context.setupFrame.rightHip) {
-    spineAngleStart = Math.atan2(context.setupFrame.rightShoulder.x - context.setupFrame.rightHip.x, context.setupFrame.rightShoulder.y - context.setupFrame.rightHip.y);
+    spineAngleStart = Math.atan2(context.setupFrame.rightShoulder.y - context.setupFrame.rightHip.y, context.setupFrame.rightShoulder.x - context.setupFrame.rightHip.x);
     spineAngleStart = spineAngleStart * (180 / Math.PI);
   }
   let spineAngleTop = null
   if (context.topFrame.rightShoulder && context.topFrame.rightHip) {
-    spineAngleTop = Math.atan2(context.topFrame.rightShoulder.x - context.topFrame.rightHip.x, context.topFrame.rightShoulder.y - context.topFrame.rightHip.y);
+    spineAngleTop = Math.atan2(context.topFrame.rightShoulder.y - context.topFrame.rightHip.y, context.topFrame.rightShoulder.x - context.topFrame.rightHip.x);
     spineAngleTop = spineAngleTop * (180 / Math.PI);
   }
   let spineAngleImpact = null
   if (context.impactFrame.rightShoulder && context.impactFrame.rightHip) {
-    spineAngleImpact = Math.atan2(context.impactFrame.rightShoulder.x - context.impactFrame.rightHip.x, context.impactFrame.rightShoulder.y - context.impactFrame.rightHip.y);
+    spineAngleImpact = Math.atan2(context.impactFrame.rightShoulder.y - context.impactFrame.rightHip.y, context.impactFrame.rightShoulder.x - context.impactFrame.rightHip.x);
     spineAngleImpact = spineAngleImpact * (180 / Math.PI);
   }
   let kneeFlexStart = null
@@ -215,7 +214,7 @@ function calculatePosture(context: context) {
     kneeFlexTop = threeJoinAngle(context.topFrame.rightHip, context.topFrame.rightKnee, context.topFrame.rightAnkle);
   }
   let kneeFlexMin = Infinity;
-  for (let i = 0; i < context.recordedFrames.length; i++) {
+  for (let i = 0; i < context.impactframeIndex; i++) {
     if (context.recordedFrames[i].rightKnee && context.recordedFrames[i].rightAnkle && context.recordedFrames[i].rightHip) {
       const kneeFlex = threeJoinAngle(context.recordedFrames[i].rightHip, context.recordedFrames[i].rightKnee, context.recordedFrames[i].rightAnkle);
       if (kneeFlex !== null && kneeFlex < kneeFlexMin) {
@@ -294,11 +293,11 @@ function calculateKinematics(context: context) {
 
   let lateralHipMovement = null;
 
-  const setupHip = context.setupFrame.leftHip;
-  const impactHip = context.impactFrame.leftHip;
 
-  if (setupHip && impactHip) {
-    lateralHipMovement = impactHip.x - setupHip.x;
+  const setupMid = hipMidpoint(context.setupFrame);
+  const impactMid = hipMidpoint(context.impactFrame);
+  if (setupMid && impactMid) {
+    lateralHipMovement = impactMid.x - setupMid.x;
   }
 
   return {
@@ -313,7 +312,7 @@ function calculateKinematics(context: context) {
       impact: shoulderImpact,
     },
   
-    hipRotation: {
+    hipTilt: {
       max: hipMax,
       top: hipTop,
       impact: hipImpact,
@@ -439,7 +438,7 @@ function calculateSpeed(ctx: context): SwingAnalysis["speed"] {
   let handSpeedMax: number | null = null;
   let handSpeedAtImpact: number | null = null;
 
-  for (let i = 1; i < ctx.recordedFrames.length; i++) {
+  for (let i = 1; i < ctx.impactframeIndex; i++) {
     const prev = ctx.recordedFrames[i - 1].leftWrist;
     const curr = ctx.recordedFrames[i].leftWrist;
     if (!prev || !curr) continue;
@@ -482,8 +481,8 @@ function calculateStability(ctx: context): SwingAnalysis["stability"] {
   let total = 0;
   let segmentCount = 0;
 
-  for (let i = 0; i < ctx.recordedFrames.length; i++) {
-    const h = headProxy(ctx.recordedFrames[i]);
+  for (let i = 0; i < ctx.impactframeIndex; i++) {
+    const h = ctx.recordedFrames[i].rightEar;
     if (!h) continue;
     if (prevHead) {
       const d = Math.hypot(h.x - prevHead.x, h.y - prevHead.y);
@@ -497,8 +496,8 @@ function calculateStability(ctx: context): SwingAnalysis["stability"] {
 
   const headMovement = segmentCount > 0 ? finiteOrNull(total) : null;
 
-  const headTop = headProxy(ctx.topFrame);
-  const headImp = headProxy(ctx.impactFrame);
+  const headTop = ctx.topFrame.rightEar;
+  const headImp = ctx.impactFrame.rightEar;
   let headRise: number | null = null;
   if (headTop && headImp) {
     headRise = finiteOrNull(headTop.y - headImp.y);
