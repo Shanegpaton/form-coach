@@ -135,11 +135,6 @@ function calculatePhases(recordedFrames: Keypoints[]) {
   let topframe = 0;
   let impactframe = 0;
   for (let i = 0; i < recordedFrames.length; i++) {
-    if (recordedFrames[i].leftWrist) {
-      console.log(recordedFrames[i].leftWrist);
-      console.log(recordedFrames[i].leftWrist.y);
-      console.log(recordedFrames[topframe].leftWrist.y);
-    }
     if (recordedFrames[i].leftWrist && recordedFrames[i].leftWrist.y > recordedFrames[topframe].leftWrist.y) {
       topframe = i;
     }

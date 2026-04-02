@@ -95,7 +95,6 @@ export function useSwingRecorder(frameData: FrameData | null): UseSwingRecorderR
   useEffect(() => {
     if (!isRecording || !frameData) return;
     const keyPoints = extractKeypoints(frameData);
-    console.log(keyPoints);
     recordedFramesRef.current.push(keyPoints);
   }, [frameData, isRecording]);
 

@@ -6,14 +6,15 @@ import {
   type NormalizedLandmark,
 } from '@mediapipe/tasks-vision';
 import { usePoseDetection } from '../hooks/usePoseDetection';
-import { useSwingRecorder } from '../hooks/useSwingRecorder';
 import { calculateSwingMetrics } from '../lib/swing/calculateSwingMetrics';
+import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
 
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { landmarks, frameData } = usePoseDetection(videoRef);
-  const { startRecording, stopRecording, isRecording, resetRecording, recordedFrames } = useSwingRecorder(frameData);
+  const { status, isArmed, isRecording, recordedFrames, arm, cancel } =
+    useAutoSwingCapture(frameData);
 
   useEffect(() => {
     const drawPose = (landmarksByPose: NormalizedLandmark[][]) => {
@@ -42,20 +43,34 @@ export default function CameraStream() {
   }, [landmarks]);
 
   useEffect(() => {
-    if (!isRecording && recordedFrames.length > 0) {
+    if (status === 'completed' && recordedFrames.length > 0) {
       const metrics = calculateSwingMetrics(recordedFrames);
       console.log(metrics);
     }
-  }, [isRecording]);
+  }, [status, recordedFrames]);
+
+  const buttonLabel =
+    status === 'armed_waiting_still'
+      ? 'Get still...'
+      : status === 'armed_waiting_motion'
+        ? 'Swing when ready...'
+        : status === 'recording'
+          ? 'Recording...'
+          : 'Arm recording';
 
 
   return (
     <div className="relative w-full max-w-2xl">
       <video ref={videoRef} autoPlay playsInline className="h-auto w-full rounded-md" />
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
-      <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={isRecording ? stopRecording : startRecording}>
-            Record
+      <div className="mt-4 flex items-center gap-2">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={isArmed || isRecording ? cancel : arm}>
+          {buttonLabel}
         </button>
+        <div className="text-sm text-zinc-600">
+          {recordedFrames.length > 0 ? `Frames: ${recordedFrames.length}` : null}
+        </div>
+      </div>
     </div>
     
   );
