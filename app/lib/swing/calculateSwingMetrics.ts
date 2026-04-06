@@ -57,17 +57,13 @@ export type SwingAnalysis = {
   // Swing path (club path approximation via wrists)
   swingPath: {
     pathType: "inside-out" | "outside-in" | "neutral";
-    backswingVector: { x: number; y: number } | null;
-    downswingVector: { x: number; y: number } | null;
+    /** Wrist displacement: |v|/torsoLength + direction (angle not scaled). */
+    backswingVector: { magnitude: number; angleDeg: number } | null;
+    downswingVector: { magnitude: number; angleDeg: number } | null;
     transitionAngle: number | null;
     downswingAngle: number | null;
     pathSeverity: number | null;
     planeConsistency: number | null;
-  };
-  // Speed + power
-  speed: {
-    handSpeedMax: number | null;
-    handSpeedAtImpact: number | null;
   };
 
   // Stability + posture maintenance
@@ -85,6 +81,7 @@ type context = {
   impactFrame: Keypoints;
   topframeIndex: number;
   impactframeIndex: number;
+  torsoLength: number | null;
 };
 
 const PATH_ANGLE_THRESHOLD_DEG = 5;
@@ -101,6 +98,36 @@ function midPoint2D(a: Joint, b: Joint): { x: number; y: number } {
 function hipMidpoint(f: Keypoints): { x: number; y: number } | null {
   if (f.leftHip && f.rightHip) return midPoint2D(f.leftHip, f.rightHip);
   return null;
+}
+
+function torsoLengthFromSetup(setup: Keypoints): number | null {
+  const s = setup.rightShoulder;
+  const h = setup.rightHip;
+  if (!s || !h) return null;
+  const len = Math.hypot(h.x - s.x, h.y - s.y);
+  if (!Number.isFinite(len) || len <= 1e-9) return null;
+  return len;
+}
+
+/**
+ * Wrist displacement normalized by torso length: magnitude = hypot(v)/torso.
+ * Direction is the raw vector angle (scaling a vector does not change atan2).
+ */
+function torsoNormalizedDisplacement(
+  v: { x: number; y: number } | null,
+  torso: number | null,
+): { magnitude: number; angleDeg: number } | null {
+  if (!v || torso == null || torso <= 0) return null;
+  const mag = Math.hypot(v.x, v.y);
+  const magnitude = finiteOrNull(mag / torso);
+  const angleDeg = finiteOrNull(Math.atan2(v.y, v.x) * (180 / Math.PI));
+  if (magnitude == null || angleDeg == null) return null;
+  return { magnitude, angleDeg };
+}
+
+function scaleDistance(d: number | null, torso: number | null): number | null {
+  if (d == null || torso == null || torso <= 0) return null;
+  return finiteOrNull(d / torso);
 }
 
 function angleBetweenVectorsDeg(v1: { x: number; y: number }, v2: { x: number; y: number }): number | null {
@@ -235,6 +262,7 @@ function calculatePosture(context: context) {
 }
 
 function calculateKinematics(context: context) {
+  const T = context.torsoLength;
   let leadElbowMin = Infinity;
   for (let i = 0; i < context.impactframeIndex; i++) {
     if (context.recordedFrames[i].leftElbow && context.recordedFrames[i].leftWrist && context.recordedFrames[i].leftShoulder) {
@@ -292,7 +320,7 @@ function calculateKinematics(context: context) {
   const setupMid = hipMidpoint(context.setupFrame);
   const impactMid = hipMidpoint(context.impactFrame);
   if (setupMid && impactMid) {
-    lateralHipMovement = impactMid.x - setupMid.x;
+    lateralHipMovement = scaleDistance(impactMid.x - setupMid.x, T);
   }
 
   return {
@@ -378,23 +406,29 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
 }
 
 function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
+  const T = ctx.torsoLength;
   const w0 = ctx.setupFrame.leftWrist;
   const wTop = ctx.topFrame.leftWrist;
   const wImp = ctx.impactFrame.leftWrist;
 
-  const backswingVector =
+  const backswingVectorRaw =
     w0 && wTop ? { x: wTop.x - w0.x, y: wTop.y - w0.y } : null;
-  const downswingVector =
+  const downswingVectorRaw =
     wTop && wImp ? { x: wImp.x - wTop.x, y: wImp.y - wTop.y } : null;
 
+  const backswingVector = torsoNormalizedDisplacement(backswingVectorRaw, T);
+  const downswingVector = torsoNormalizedDisplacement(downswingVectorRaw, T);
+
   const transitionAngle =
-    backswingVector && downswingVector
-      ? angleBetweenVectorsDeg(backswingVector, downswingVector)
+    backswingVectorRaw && downswingVectorRaw
+      ? angleBetweenVectorsDeg(backswingVectorRaw, downswingVectorRaw)
       : null;
 
   let downswingAngle: number | null = null;
-  if (downswingVector) {
-    downswingAngle = finiteOrNull(Math.atan2(downswingVector.y, downswingVector.x) * (180 / Math.PI));
+  if (downswingVectorRaw) {
+    downswingAngle = finiteOrNull(
+      Math.atan2(downswingVectorRaw.y, downswingVectorRaw.x) * (180 / Math.PI),
+    );
   }
 
   let pathType: SwingAnalysis["swingPath"]["pathType"] = "neutral";
@@ -429,49 +463,9 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
   };
 }
 
-function calculateSpeed(ctx: context): SwingAnalysis["speed"] {
-  let handSpeedMax: number | null = null;
-  let handSpeedAtImpact: number | null = null;
-
-  for (let i = 1; i < ctx.impactframeIndex; i++) {
-    const prev = ctx.recordedFrames[i - 1].leftWrist;
-    const curr = ctx.recordedFrames[i].leftWrist;
-    if (!prev || !curr) continue;
-
-    const dt = ctx.recordedFrames[i].timestamp - ctx.recordedFrames[i - 1].timestamp;
-    if (!Number.isFinite(dt) || dt <= 0) continue;
-
-    const dist = Math.hypot(curr.x - prev.x, curr.y - prev.y);
-    const v = dist / dt;
-    if (!Number.isFinite(v)) continue;
-
-    if (handSpeedMax === null || v > handSpeedMax) handSpeedMax = v;
-    if (i === ctx.impactframeIndex) handSpeedAtImpact = v;
-  }
-
-  if (
-    handSpeedAtImpact === null &&
-    ctx.impactframeIndex > 0 &&
-    ctx.impactframeIndex < ctx.recordedFrames.length
-  ) {
-    const prev = ctx.recordedFrames[ctx.impactframeIndex - 1].leftWrist;
-    const curr = ctx.recordedFrames[ctx.impactframeIndex].leftWrist;
-    if (prev && curr) {
-      const dt =
-        ctx.recordedFrames[ctx.impactframeIndex].timestamp -
-        ctx.recordedFrames[ctx.impactframeIndex - 1].timestamp;
-      if (Number.isFinite(dt) && dt > 0) {
-        const dist = Math.hypot(curr.x - prev.x, curr.y - prev.y);
-        const v = dist / dt;
-        if (Number.isFinite(v)) handSpeedAtImpact = v;
-      }
-    }
-  }
-
-  return { handSpeedMax, handSpeedAtImpact };
-}
 
 function calculateStability(ctx: context): SwingAnalysis["stability"] {
+  const T = ctx.torsoLength;
   let prevHead: { x: number; y: number } | null = null;
   let total = 0;
   let segmentCount = 0;
@@ -489,20 +483,21 @@ function calculateStability(ctx: context): SwingAnalysis["stability"] {
     prevHead = h;
   }
 
-  const headMovement = segmentCount > 0 ? finiteOrNull(total) : null;
+  const headMovementRaw = segmentCount > 0 ? finiteOrNull(total) : null;
+  const headMovement = scaleDistance(headMovementRaw, T);
 
   const headTop = ctx.topFrame.rightEar;
   const headImp = ctx.impactFrame.rightEar;
   let headRise: number | null = null;
   if (headTop && headImp) {
-    headRise = finiteOrNull(headTop.y - headImp.y);
+    headRise = scaleDistance(finiteOrNull(headTop.y - headImp.y), T);
   }
 
   const hipSetup = hipMidpoint(ctx.setupFrame);
   const hipImp = hipMidpoint(ctx.impactFrame);
   let hipRise: number | null = null;
   if (hipSetup && hipImp) {
-    hipRise = finiteOrNull(hipSetup.y - hipImp.y);
+    hipRise = scaleDistance(finiteOrNull(hipSetup.y - hipImp.y), T);
   }
 
   return { headMovement, headRise, hipRise };
@@ -513,6 +508,7 @@ export function calculateSwingMetrics(recordedFrames: Keypoints[]): SwingAnalysi
     return null;
   }
 
+  const torsoLength = torsoLengthFromSetup(recordedFrames[0]);
   const metadata = calculateMetadata(recordedFrames);
   const phases = calculatePhases(recordedFrames);
   const contextObj: context = {
@@ -522,12 +518,12 @@ export function calculateSwingMetrics(recordedFrames: Keypoints[]): SwingAnalysi
     impactFrame: phases.impactFrame,
     topframeIndex: phases.topframeIndex,
     impactframeIndex: phases.impactframeIndex,
+    torsoLength,
   };
   const posture = calculatePosture(contextObj);
   const kinematics = calculateKinematics(contextObj);
   const sequencing = calculateSequencing(contextObj);
   const swingPath = calculateSwingPath(contextObj);
-  const speed = calculateSpeed(contextObj);
   const stability = calculateStability(contextObj);
 
   return {
@@ -536,7 +532,6 @@ export function calculateSwingMetrics(recordedFrames: Keypoints[]): SwingAnalysi
     kinematics,
     sequencing,
     swingPath,
-    speed,
     stability,
   };
 }

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   DrawingUtils,
   PoseLandmarker,
@@ -9,15 +9,32 @@ import { usePoseDetection } from '../hooks/usePoseDetection';
 import { calculateSwingMetrics } from '../lib/swing/calculateSwingMetrics';
 import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
 
+type PoseColors = { landmark: string; connector: string };
+
+function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
+  if (status === 'armed_waiting_still' && !fullBodyFramed) {
+    return { landmark: '#ef4444', connector: '#dc2626' };
+  }
+  if (status === 'armed_waiting_still' && fullBodyFramed) {
+    return { landmark: '#eab308', connector: '#ca8a04' };
+  }
+  if (status === 'armed_waiting_motion' || status === 'recording') {
+    return { landmark: '#22c55e', connector: '#16a34a' };
+  }
+  return { landmark: '#00ff88', connector: '#00b4ff' };
+}
+
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { landmarks, frameData } = usePoseDetection(videoRef);
-  const { status, isArmed, isRecording, recordedFrames, arm, cancel } =
+  const { status, isArmed, isRecording, fullBodyFramed, recordedFrames, arm, cancel } =
     useAutoSwingCapture(frameData);
 
+  const poseColors = useMemo(() => getPoseColors(status, fullBodyFramed), [status, fullBodyFramed]);
+
   useEffect(() => {
-    const drawPose = (landmarksByPose: NormalizedLandmark[][]) => {
+    const drawPose = (landmarksByPose: NormalizedLandmark[][], colors: PoseColors) => {
       const canvas = canvasRef.current;
       const video = videoRef.current;
       if (!canvas || !video) return;
@@ -32,15 +49,15 @@ export default function CameraStream() {
 
       landmarksByPose.forEach((poseLandmarks) => {
         drawingUtils.drawConnectors(poseLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-          color: '#00b4ff',
+          color: colors.connector,
           lineWidth: 2,
         });
-        drawingUtils.drawLandmarks(poseLandmarks, { color: '#00ff88', radius: 4 });
+        drawingUtils.drawLandmarks(poseLandmarks, { color: colors.landmark, radius: 4 });
       });
     };
 
-    drawPose(landmarks);
-  }, [landmarks]);
+    drawPose(landmarks, poseColors);
+  }, [landmarks, poseColors]);
 
   useEffect(() => {
     if (status === 'completed' && recordedFrames.length > 0) {
@@ -51,7 +68,9 @@ export default function CameraStream() {
 
   const buttonLabel =
     status === 'armed_waiting_still'
-      ? 'Get still...'
+      ? fullBodyFramed
+        ? 'Get still...'
+        : 'Step back — full body in frame'
       : status === 'armed_waiting_motion'
         ? 'Swing when ready...'
         : status === 'recording'
@@ -68,7 +87,11 @@ export default function CameraStream() {
           {buttonLabel}
         </button>
         <div className="text-sm text-zinc-600">
-          {recordedFrames.length > 0 ? `Frames: ${recordedFrames.length}` : null}
+          {status === 'armed_waiting_still' && !fullBodyFramed ? (
+            <span className="text-amber-700">Show head through ankles in frame.</span>
+          ) : recordedFrames.length > 0 ? (
+            `Frames: ${recordedFrames.length}`
+          ) : null}
         </div>
       </div>
     </div>
