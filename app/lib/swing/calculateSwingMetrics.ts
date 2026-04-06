@@ -46,12 +46,23 @@ export type SwingAnalysis = {
     };
   };
 
-  // Motion sequencing (VERY important for coaching)
+  // Motion sequencing — timing split so offsets vs inter-event deltas cannot be confused
   sequencing: {
+    timing: {
+      /** Elapsed ms from recording start (first frame `timestamp` = origin) */
+      absolute: {
+        hipPeakMs: number | null;
+        shoulderPeakMs: number | null;
+        topMs: number | null;
+        impactMs: number | null;
+      };
+      /** Differences between event timestamps only (not vs recording start) */
+      relative: {
+        /** shoulder peak time − hip peak time (positive = shoulder peaks later) */
+        hipVsShoulderMs: number | null;
+      };
+    };
     hipLead: boolean | null;
-    hipVsShoulderTiming: number | null;
-    hipPeakFrame: number | null;
-    shoulderPeakFrame: number | null;
   };
 
   // Swing path (club path approximation via wrists)
@@ -79,8 +90,8 @@ type context = {
   setupFrame: Keypoints;
   topFrame: Keypoints;
   impactFrame: Keypoints;
-  topframeIndex: number;
-  impactframeIndex: number;
+  /** First frame timestamp (ms); offsets are relative to this */
+  recordingStartTimestamp: number;
   torsoLength: number | null;
 };
 
@@ -169,12 +180,13 @@ function calculatePhases(recordedFrames: Keypoints[]) {
       impactframe = i;
     }
   }
+  const t0 = recordedFrames[0].timestamp;
   return {
     setupFrame: recordedFrames[0],
     topFrame: recordedFrames[topframe],
     impactFrame: recordedFrames[impactframe],
-    topframeIndex: topframe,
-    impactframeIndex: impactframe,
+    timeTopMs: finiteOrNull(recordedFrames[topframe].timestamp - t0),
+    timeImpactMs: finiteOrNull(recordedFrames[impactframe].timestamp - t0),
   };
 }
 
@@ -236,9 +248,10 @@ function calculatePosture(context: context) {
     kneeFlexTop = threeJoinAngle(context.topFrame.rightHip, context.topFrame.rightKnee, context.topFrame.rightAnkle);
   }
   let kneeFlexMin = Infinity;
-  for (let i = 0; i < context.impactframeIndex; i++) {
-    if (context.recordedFrames[i].rightKnee && context.recordedFrames[i].rightAnkle && context.recordedFrames[i].rightHip) {
-      const kneeFlex = threeJoinAngle(context.recordedFrames[i].rightHip, context.recordedFrames[i].rightKnee, context.recordedFrames[i].rightAnkle);
+  for (const f of context.recordedFrames) {
+    if (f.timestamp > context.impactFrame.timestamp) break;
+    if (f.rightKnee && f.rightAnkle && f.rightHip) {
+      const kneeFlex = threeJoinAngle(f.rightHip, f.rightKnee, f.rightAnkle);
       if (kneeFlex !== null && kneeFlex < kneeFlexMin) {
         kneeFlexMin = kneeFlex;
       }
@@ -264,9 +277,10 @@ function calculatePosture(context: context) {
 function calculateKinematics(context: context) {
   const T = context.torsoLength;
   let leadElbowMin = Infinity;
-  for (let i = 0; i < context.impactframeIndex; i++) {
-    if (context.recordedFrames[i].leftElbow && context.recordedFrames[i].leftWrist && context.recordedFrames[i].leftShoulder) {
-      const leadElbow = threeJoinAngle(context.recordedFrames[i].leftShoulder, context.recordedFrames[i].leftElbow, context.recordedFrames[i].leftWrist);
+  for (const f of context.recordedFrames) {
+    if (f.timestamp > context.impactFrame.timestamp) break;
+    if (f.leftElbow && f.leftWrist && f.leftShoulder) {
+      const leadElbow = threeJoinAngle(f.leftShoulder, f.leftElbow, f.leftWrist);
       if (leadElbow !== null && leadElbow < leadElbowMin) {
         leadElbowMin = leadElbow;
       }
@@ -283,33 +297,32 @@ function calculateKinematics(context: context) {
   let hipTop = null;
   let hipImpact = null;
   
-  for (let i = 0; i < context.impactframeIndex; i++) {
-    const f = context.recordedFrames[i];
+  for (const f of context.recordedFrames) {
+    if (f.timestamp > context.impactFrame.timestamp) break;
     if (f.leftShoulder && f.rightShoulder) {
       const dx = f.rightShoulder.x - f.leftShoulder.x;
       const dy = f.rightShoulder.y - f.leftShoulder.y;
-  
+
       const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
-  
+
       if (angle > shoulderMax) shoulderMax = angle;
-  
-      if (i === 0) shoulderSetup = angle;
-      if (i === context.topframeIndex) shoulderTop = angle;
-      if (i === context.impactframeIndex) shoulderImpact = angle;
+
+      if (f === context.setupFrame) shoulderSetup = angle;
+      if (f === context.topFrame) shoulderTop = angle;
+      if (f === context.impactFrame) shoulderImpact = angle;
 
       if (f.leftHip && f.rightHip) {
-        const dx = f.rightHip.x - f.leftHip.x;
-        const dy = f.rightHip.y - f.leftHip.y;
-    
-        const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
-    
-        if (angle > hipMax) hipMax = angle;
-    
-        if (i === context.topframeIndex) hipTop = angle;
-        if (i === context.impactframeIndex) hipImpact = angle;
+        const hdx = f.rightHip.x - f.leftHip.x;
+        const hdy = f.rightHip.y - f.leftHip.y;
+
+        const hAngle = Math.abs(Math.atan2(hdy, hdx) * (180 / Math.PI));
+
+        if (hAngle > hipMax) hipMax = hAngle;
+
+        if (f === context.topFrame) hipTop = hAngle;
+        if (f === context.impactFrame) hipImpact = hAngle;
       }
     }
-
   }
   if (shoulderMax === -Infinity) shoulderMax = null;
   if (hipMax === -Infinity) hipMax = null;
@@ -349,19 +362,19 @@ function calculateKinematics(context: context) {
 
 function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
   let maxHipTilt = -Infinity;
-  let hipPeakFrame: number | null = null;
+  let hipPeakTs: number | null = null;
   let maxShoulderTilt = -Infinity;
-  let shoulderPeakFrame: number | null = null;
+  let shoulderPeakTs: number | null = null;
 
-  for (let i = 0; i < ctx.impactframeIndex; i++) {
-    const f = ctx.recordedFrames[i];
+  for (const f of ctx.recordedFrames) {
+    if (f.timestamp > ctx.impactFrame.timestamp) break;
     if (f.leftHip && f.rightHip) {
       const dx = f.rightHip.x - f.leftHip.x;
       const dy = f.rightHip.y - f.leftHip.y;
       const tilt = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
       if (Number.isFinite(tilt) && tilt > maxHipTilt) {
         maxHipTilt = tilt;
-        hipPeakFrame = i;
+        hipPeakTs = f.timestamp;
       }
     }
     if (f.leftShoulder && f.rightShoulder) {
@@ -370,38 +383,38 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
       const tilt = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
       if (Number.isFinite(tilt) && tilt > maxShoulderTilt) {
         maxShoulderTilt = tilt;
-        shoulderPeakFrame = i;
+        shoulderPeakTs = f.timestamp;
       }
     }
   }
 
-  if (maxHipTilt === -Infinity) hipPeakFrame = null;
-  if (maxShoulderTilt === -Infinity) shoulderPeakFrame = null;
+  if (maxHipTilt === -Infinity) hipPeakTs = null;
+  if (maxShoulderTilt === -Infinity) shoulderPeakTs = null;
 
-  let hipVsShoulderTiming: number | null = null;
+  const t0 = ctx.recordingStartTimestamp;
+  let hipVsShoulderMs: number | null = null;
   let hipLead: boolean | null = null;
 
-  if (
-    hipPeakFrame !== null &&
-    shoulderPeakFrame !== null &&
-    hipPeakFrame >= 0 &&
-    hipPeakFrame < ctx.recordedFrames.length &&
-    shoulderPeakFrame >= 0 &&
-    shoulderPeakFrame < ctx.recordedFrames.length
-  ) {
-    const tHip = ctx.recordedFrames[hipPeakFrame].timestamp;
-    const tShoulder = ctx.recordedFrames[shoulderPeakFrame].timestamp;
-    if (Number.isFinite(tHip) && Number.isFinite(tShoulder)) {
-      hipVsShoulderTiming = tShoulder - tHip;
-      hipLead = tHip < tShoulder;
+  if (hipPeakTs !== null && shoulderPeakTs !== null) {
+    if (Number.isFinite(hipPeakTs) && Number.isFinite(shoulderPeakTs)) {
+      hipVsShoulderMs = finiteOrNull(shoulderPeakTs - hipPeakTs);
+      hipLead = hipPeakTs < shoulderPeakTs;
     }
   }
 
   return {
+    timing: {
+      absolute: {
+        hipPeakMs: hipPeakTs != null ? finiteOrNull(hipPeakTs - t0) : null,
+        shoulderPeakMs: shoulderPeakTs != null ? finiteOrNull(shoulderPeakTs - t0) : null,
+        topMs: finiteOrNull(ctx.topFrame.timestamp - t0),
+        impactMs: finiteOrNull(ctx.impactFrame.timestamp - t0),
+      },
+      relative: {
+        hipVsShoulderMs,
+      },
+    },
     hipLead,
-    hipVsShoulderTiming,
-    hipPeakFrame,
-    shoulderPeakFrame,
   };
 }
 
@@ -441,11 +454,18 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
   const pathSeverity = downswingAngle !== null ? finiteOrNull(Math.abs(downswingAngle)) : null;
 
   const segmentAngles: number[] = [];
-  const start = Math.min(ctx.topframeIndex, ctx.impactframeIndex);
-  const end = Math.max(ctx.topframeIndex, ctx.impactframeIndex);
-  for (let i = start; i < end; i++) {
-    const a = ctx.recordedFrames[i]?.leftWrist;
-    const b = ctx.recordedFrames[i + 1]?.leftWrist;
+  const tTop = ctx.topFrame.timestamp;
+  const tImp = ctx.impactFrame.timestamp;
+  const tLo = Math.min(tTop, tImp);
+  const tHi = Math.max(tTop, tImp);
+  for (let i = 0; i < ctx.recordedFrames.length - 1; i++) {
+    const fa = ctx.recordedFrames[i];
+    const fb = ctx.recordedFrames[i + 1];
+    const segMin = Math.min(fa.timestamp, fb.timestamp);
+    const segMax = Math.max(fa.timestamp, fb.timestamp);
+    if (segMax < tLo || segMin > tHi) continue;
+    const a = fa.leftWrist;
+    const b = fb.leftWrist;
     if (!a || !b) continue;
     const ang = Math.atan2(b.y - a.y, b.x - a.x) * (180 / Math.PI);
     if (Number.isFinite(ang)) segmentAngles.push(ang);
@@ -470,8 +490,9 @@ function calculateStability(ctx: context): SwingAnalysis["stability"] {
   let total = 0;
   let segmentCount = 0;
 
-  for (let i = 0; i < ctx.impactframeIndex; i++) {
-    const h = ctx.recordedFrames[i].rightEar;
+  for (const f of ctx.recordedFrames) {
+    if (f.timestamp > ctx.impactFrame.timestamp) break;
+    const h = f.rightEar;
     if (!h) continue;
     if (prevHead) {
       const d = Math.hypot(h.x - prevHead.x, h.y - prevHead.y);
@@ -509,15 +530,14 @@ export function calculateSwingMetrics(recordedFrames: Keypoints[]): SwingAnalysi
   }
 
   const torsoLength = torsoLengthFromSetup(recordedFrames[0]);
-  const metadata = calculateMetadata(recordedFrames);
   const phases = calculatePhases(recordedFrames);
+  const metadata = calculateMetadata(recordedFrames);
   const contextObj: context = {
     recordedFrames: recordedFrames,
     setupFrame: phases.setupFrame,
     topFrame: phases.topFrame,
     impactFrame: phases.impactFrame,
-    topframeIndex: phases.topframeIndex,
-    impactframeIndex: phases.impactframeIndex,
+    recordingStartTimestamp: recordedFrames[0].timestamp,
     torsoLength,
   };
   const posture = calculatePosture(contextObj);
