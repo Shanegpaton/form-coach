@@ -171,15 +171,37 @@ function calculateMetadata(recordedFrames: Keypoints[]): SwingAnalysis["metadata
 
 function calculatePhases(recordedFrames: Keypoints[]) {
   let topframe = 0;
-  let impactframe = 0;
+  while (topframe < recordedFrames.length && !recordedFrames[topframe].leftWrist) {
+    topframe += 1;
+  }
+  if (topframe >= recordedFrames.length) {
+    const f0 = recordedFrames[0];
+    const t0 = f0.timestamp;
+    return {
+      setupFrame: f0,
+      topFrame: f0,
+      impactFrame: f0,
+      timeTopMs: 0,
+      timeImpactMs: 0,
+    };
+  }
+
+  let impactframe = topframe;
   for (let i = 0; i < recordedFrames.length; i++) {
-    if (recordedFrames[i].leftWrist && recordedFrames[i].leftWrist.y > recordedFrames[topframe].leftWrist.y) {
+    const lw = recordedFrames[i].leftWrist;
+    if (!lw) continue;
+
+    const topLw = recordedFrames[topframe].leftWrist;
+    if (topLw && lw.y > topLw.y) {
       topframe = i;
     }
-    if (recordedFrames[i].leftWrist && recordedFrames[i].leftWrist.y < recordedFrames[impactframe].leftWrist.y && topframe < i) {
+
+    const impLw = recordedFrames[impactframe].leftWrist;
+    if (impLw && lw.y < impLw.y && topframe < i) {
       impactframe = i;
     }
   }
+
   const t0 = recordedFrames[0].timestamp;
   return {
     setupFrame: recordedFrames[0],
@@ -371,7 +393,7 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
     if (f.leftHip && f.rightHip) {
       const dx = f.rightHip.x - f.leftHip.x;
       const dy = f.rightHip.y - f.leftHip.y;
-      const tilt = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
+      const tilt = Math.atan2(dy, dx) * (180 / Math.PI);
       if (Number.isFinite(tilt) && tilt > maxHipTilt) {
         maxHipTilt = tilt;
         hipPeakTs = f.timestamp;
@@ -380,7 +402,7 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
     if (f.leftShoulder && f.rightShoulder) {
       const dx = f.rightShoulder.x - f.leftShoulder.x;
       const dy = f.rightShoulder.y - f.leftShoulder.y;
-      const tilt = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
+      const tilt = Math.atan2(dy, dx) * (180 / Math.PI);
       if (Number.isFinite(tilt) && tilt > maxShoulderTilt) {
         maxShoulderTilt = tilt;
         shoulderPeakTs = f.timestamp;
@@ -451,7 +473,7 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
     else pathType = "neutral";
   }
 
-  const pathSeverity = downswingAngle !== null ? finiteOrNull(Math.abs(downswingAngle)) : null;
+  const pathSeverity = downswingAngle !== null ? finiteOrNull(downswingAngle) : null;
 
   const segmentAngles: number[] = [];
   const tTop = ctx.topFrame.timestamp;

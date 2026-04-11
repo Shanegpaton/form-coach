@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Link from "next/link";
 import CameraStream from "./components/cameraStream";
 
 export default function Home() {
@@ -8,6 +8,11 @@ export default function Home() {
         <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
           <h1 className="text-4xl font-bold">Computer Vision Coaching</h1>
           <p>Start squating to get feedback on your form.</p>
+          <p className="text-sm text-zinc-500">
+            <Link prefetch={false} href="/dev/driver-benchmarks" className="text-blue-600 hover:underline">
+              Dev: driver benchmark JSON
+            </Link>
+          </p>
           <CameraStream />
         </div>
       </main>

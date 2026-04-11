@@ -69,7 +69,7 @@ export function allSwingKeypointsFramed(kp: Keypoints): boolean {
 }
 
 
-function toKeypoints(frameData: FrameData): Keypoints {
+export function toKeypoints(frameData: FrameData): Keypoints {
   const j = frameData.joints;
   const joint = (idx: number) =>
     j[idx] != null && j[idx].visibility != null && j[idx].visibility > 0.5 ? (j[idx] as any) : null;
