@@ -68,8 +68,6 @@ export type SwingAnalysis = {
     backswingVector: { magnitude: number; angleDeg: number } | null;
     downswingVector: { magnitude: number; angleDeg: number } | null;
     transitionAngle: number | null;
-    downswingAngle: number | null;
-    pathSeverity: number | null;
   };
 
   // Stability + posture maintenance
@@ -182,20 +180,22 @@ function calculatePhases(recordedFrames: Keypoints[]) {
     };
   }
 
-  let impactframe = topframe;
-  for (let i = 0; i < recordedFrames.length; i++) {
+  // Pass 1: global max wrist y = "top" (must finish before impact — updating both in one loop
+  // could move topframe after impactframe was set, giving impactMs < topMs).
+  for (let i = topframe + 1; i < recordedFrames.length; i++) {
     const lw = recordedFrames[i].leftWrist;
-    if (!lw) continue;
-
     const topLw = recordedFrames[topframe].leftWrist;
-    if (topLw && lw.y > topLw.y) {
-      topframe = i;
-    }
+    if (!lw || !topLw) continue;
+    if (lw.y > topLw.y) topframe = i;
+  }
 
+  // Pass 2: min wrist y after top index = impact candidate (same heuristic as before, but i > top only).
+  let impactframe = topframe;
+  for (let i = topframe + 1; i < recordedFrames.length; i++) {
+    const lw = recordedFrames[i].leftWrist;
     const impLw = recordedFrames[impactframe].leftWrist;
-    if (impLw && lw.y < impLw.y && topframe < i) {
-      impactframe = i;
-    }
+    if (!lw || !impLw) continue;
+    if (lw.y < impLw.y) impactframe = i;
   }
 
   const t0 = recordedFrames[0].timestamp;
@@ -438,29 +438,20 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
       ? angleBetweenVectorsDeg(backswingVectorRaw, downswingVectorRaw)
       : null;
 
-  let downswingAngle: number | null = null;
-  if (downswingVectorRaw) {
-    downswingAngle = finiteOrNull(
-      Math.atan2(downswingVectorRaw.y, downswingVectorRaw.x) * (180 / Math.PI),
-    );
-  }
+  const downswingAngleDeg = downswingVector?.angleDeg ?? null;
 
   let pathType: SwingAnalysis["swingPath"]["pathType"] = "neutral";
-  if (downswingAngle !== null) {
-    if (downswingAngle > NEUTRAL_PATH_ANGLE_DEG + PATH_ANGLE_THRESHOLD_DEG) pathType = "inside-out";
-    else if (downswingAngle < NEUTRAL_PATH_ANGLE_DEG - PATH_ANGLE_THRESHOLD_DEG) pathType = "outside-in";
+  if (downswingAngleDeg !== null) {
+    if (downswingAngleDeg > NEUTRAL_PATH_ANGLE_DEG + PATH_ANGLE_THRESHOLD_DEG) pathType = "inside-out";
+    else if (downswingAngleDeg < NEUTRAL_PATH_ANGLE_DEG - PATH_ANGLE_THRESHOLD_DEG) pathType = "outside-in";
     else pathType = "neutral";
   }
-
-  const pathSeverity = downswingAngle !== null ? finiteOrNull(downswingAngle) : null;
 
   return {
     pathType,
     backswingVector,
     downswingVector,
     transitionAngle,
-    downswingAngle,
-    pathSeverity,
   };
 }
 

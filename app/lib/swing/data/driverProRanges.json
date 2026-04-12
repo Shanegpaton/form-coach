@@ -134,18 +134,6 @@
       "mean": -101.43128283684185,
       "n": 3
     },
-    "swingPath.downswingAngle": {
-      "min": -102.51910506932107,
-      "max": -100.05923885563728,
-      "mean": -101.43128283684185,
-      "n": 3
-    },
-    "swingPath.pathSeverity": {
-      "min": -102.51910506932107,
-      "max": -100.05923885563728,
-      "mean": -101.43128283684185,
-      "n": 3
-    },
     "stability.headMovement": {
       "min": 0.09400900592852716,
       "max": 0.2915693655350025,
@@ -299,18 +287,6 @@
       "observedMax": 1.8336869258088984
     },
     "swingPath.downswingVector.angleDeg": {
-      "low": -104.5477307260579,
-      "high": -98.03061319890044,
-      "observedMin": -102.51910506932107,
-      "observedMax": -100.05923885563728
-    },
-    "swingPath.downswingAngle": {
-      "low": -104.5477307260579,
-      "high": -98.03061319890044,
-      "observedMin": -102.51910506932107,
-      "observedMax": -100.05923885563728
-    },
-    "swingPath.pathSeverity": {
       "low": -104.5477307260579,
       "high": -98.03061319890044,
       "observedMin": -102.51910506932107,

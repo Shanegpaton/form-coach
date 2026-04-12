@@ -8,6 +8,7 @@ import {
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { calculateSwingMetrics, type SwingAnalysis } from '../lib/swing/calculateSwingMetrics';
 import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
+import { CoachMarkdown } from './CoachMarkdown';
 
 type PoseColors = { landmark: string; connector: string };
 
@@ -37,7 +38,7 @@ export default function CameraStream() {
   const poseColors = useMemo(() => getPoseColors(status, fullBodyFramed), [status, fullBodyFramed]);
 
   const [lastSwing, setLastSwing] = useState<SwingAnalysis | null>(null);
-  const [coachText, setCoachText] = useState<string | null>(null);
+  const [coachText, setCoachText] = useState<string>('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
 
@@ -115,7 +116,7 @@ export default function CameraStream() {
     if (status === 'completed' && recordedFrames.length > 0) {
       const metrics = calculateSwingMetrics(recordedFrames);
       setLastSwing(metrics ?? null);
-      setCoachText(null);
+      setCoachText('');
       setCoachError(null);
     }
   }, [status, recordedFrames]);
@@ -124,20 +125,43 @@ export default function CameraStream() {
     if (!lastSwing) return;
     setCoachLoading(true);
     setCoachError(null);
-    setCoachText(null);
+    setCoachText('');
     try {
       const res = await fetch('/api/swing/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ swing: lastSwing }),
       });
-      const data = (await res.json()) as { text?: string; error?: string };
       if (!res.ok) {
-        setCoachError(data.error ?? res.statusText);
+        const raw = await res.text();
+        try {
+          const data = JSON.parse(raw) as { error?: string };
+          setCoachError(data.error ?? (raw || res.statusText));
+        } catch {
+          setCoachError(raw || res.statusText);
+        }
         return;
       }
-      if (data.text) setCoachText(data.text);
-      else setCoachError('Empty response from coach API');
+      if (!res.body) {
+        setCoachError('No response body from coach API');
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setCoachText(accumulated);
+      }
+      accumulated += decoder.decode();
+      if (accumulated.length > 0) {
+        setCoachText(accumulated);
+      }
+      if (!accumulated.trim()) {
+        setCoachError('Empty response from coach API');
+      }
     } catch (e) {
       setCoachError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -220,7 +244,7 @@ export default function CameraStream() {
             className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
             onClick={() => void requestGeminiCoach()}
           >
-            {coachLoading ? 'Asking coach…' : 'Coach with AI'}
+            {coachLoading ? 'Coach is responding…' : 'Coach with AI'}
           </button>
         ) : null}
       </div>
@@ -262,14 +286,24 @@ export default function CameraStream() {
         </div>
       ) : null}
 
-      {coachText ? (
+      {coachLoading || coachText ? (
         <section className="rounded-xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Coach feedback
           </h3>
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-            {coachText}
-          </p>
+          <div className="relative mt-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+            {coachText ? (
+              <CoachMarkdown>{coachText}</CoachMarkdown>
+            ) : (
+              <p className="text-zinc-500 dark:text-zinc-400">Waiting for the first words…</p>
+            )}
+            {coachLoading ? (
+              <span
+                className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-sm bg-zinc-400 align-[-0.15em] dark:bg-zinc-500"
+                aria-hidden
+              />
+            ) : null}
+          </div>
         </section>
       ) : null}
     </div>

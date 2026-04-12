@@ -1,0 +1,33 @@
+{
+  "club": "driver",
+  "scale": "1 = lowest coaching priority, 5 = highest. Prefer spine angle and swing path over camera-dependent hip-line and lateral-hip metrics. metricNotes (when present) explain weak or ambiguous measurements.",
+  "metricImportance": {
+    "posture.spineAngle.setup": 5,
+    "posture.spineAngle.top": 3,
+    "posture.spineAngle.impact": 5,
+    "posture.kneeFlex.min": 2,
+    "posture.kneeFlex.setup": 4,
+    "posture.kneeFlex.top": 2,
+    "posture.kneeFlex.impact": 4,
+    "kinematics.shoulderTilt.max": 3,
+    "kinematics.shoulderTilt.setup": 2,
+    "kinematics.shoulderTilt.impact": 4,
+    "kinematics.shoulderTilt.top": 1,
+    "kinematics.hipTilt.max": 1,
+    "kinematics.hipTilt.impact": 2,
+    "kinematics.hipTilt.top": 1,
+    "kinematics.weightShift.lateralHipMovement": 2,
+    "swingPath.downswingVector.magnitude": 2,
+    "swingPath.downswingVector.angleDeg": 5,
+    "stability.headMovement": 4,
+    "stability.headRise": 3,
+    "stability.hipRise": 2
+  },
+  "metricNotes": {
+    "kinematics.weightShift.lateralHipMovement": "Hip midpoint horizontal shift setup→impact in 2D only—not foot pressure or true weight transfer; do not coach this like a launch-monitor pressure trace.",
+    "kinematics.hipTilt.max": "Angle of hip–hip line in the image plane, not 3D pelvic tilt; very camera-dependent.",
+    "kinematics.hipTilt.impact": "Same 2D hip-line proxy as max; use as a weak cue only.",
+    "kinematics.hipTilt.top": "Pro reference for this key can be sparse (small n); treat bands cautiously.",
+    "kinematics.shoulderTilt.top": "Pro reference for this key can be sparse (small n); treat bands cautiously."
+  }
+}

@@ -54,9 +54,7 @@
           "magnitude": 1.4803288294377774,
           "angleDeg": -100.05923885563728
         },
-        "transitionAngle": null,
-        "downswingAngle": -100.05923885563728,
-        "pathSeverity": -100.05923885563728
+        "transitionAngle": null
       },
       "stability": {
         "headMovement": 0.2915693655350025,
@@ -118,9 +116,7 @@
           "magnitude": 1.8336869258088984,
           "angleDeg": -101.71550458556717
         },
-        "transitionAngle": null,
-        "downswingAngle": -101.71550458556717,
-        "pathSeverity": -101.71550458556717
+        "transitionAngle": null
       },
       "stability": {
         "headMovement": 0.19707414111968533,
@@ -182,9 +178,7 @@
           "magnitude": 1.4790602408833295,
           "angleDeg": -102.51910506932107
         },
-        "transitionAngle": null,
-        "downswingAngle": -102.51910506932107,
-        "pathSeverity": -102.51910506932107
+        "transitionAngle": null
       },
       "stability": {
         "headMovement": 0.09400900592852716,
@@ -243,9 +237,7 @@
         "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": null,
-        "transitionAngle": null,
-        "downswingAngle": null,
-        "pathSeverity": null
+        "transitionAngle": null
       },
       "stability": {
         "headMovement": null,
@@ -310,9 +302,7 @@
             "magnitude": 1.4803288294377774,
             "angleDeg": -100.05923885563728
           },
-          "transitionAngle": null,
-          "downswingAngle": -100.05923885563728,
-          "pathSeverity": -100.05923885563728
+          "transitionAngle": null
         },
         "stability": {
           "headMovement": 0.2915693655350025,
@@ -374,9 +364,7 @@
             "magnitude": 1.8336869258088984,
             "angleDeg": -101.71550458556717
           },
-          "transitionAngle": null,
-          "downswingAngle": -101.71550458556717,
-          "pathSeverity": -101.71550458556717
+          "transitionAngle": null
         },
         "stability": {
           "headMovement": 0.19707414111968533,
@@ -438,9 +426,7 @@
             "magnitude": 1.4790602408833295,
             "angleDeg": -102.51910506932107
           },
-          "transitionAngle": null,
-          "downswingAngle": -102.51910506932107,
-          "pathSeverity": -102.51910506932107
+          "transitionAngle": null
         },
         "stability": {
           "headMovement": 0.09400900592852716,
@@ -499,9 +485,7 @@
           "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": null,
-          "transitionAngle": null,
-          "downswingAngle": null,
-          "pathSeverity": null
+          "transitionAngle": null
         },
         "stability": {
           "headMovement": null,
@@ -632,18 +616,6 @@
         "n": 3
       },
       "swingPath.downswingVector.angleDeg": {
-        "min": -102.51910506932107,
-        "max": -100.05923885563728,
-        "mean": -101.43128283684185,
-        "n": 3
-      },
-      "swingPath.downswingAngle": {
-        "min": -102.51910506932107,
-        "max": -100.05923885563728,
-        "mean": -101.43128283684185,
-        "n": 3
-      },
-      "swingPath.pathSeverity": {
         "min": -102.51910506932107,
         "max": -100.05923885563728,
         "mean": -101.43128283684185,
