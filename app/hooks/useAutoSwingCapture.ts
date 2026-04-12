@@ -23,8 +23,8 @@ type UseAutoSwingCaptureResult = {
 
 // Heuristic defaults for normalized MediaPipe coords.
 const STILLNESS_WINDOW_MS = 1000;
-const STILL_SPEED_THRESHOLD = 0.0015; // normalized units per ms
-const MOTION_SPEED_THRESHOLD = 0.0001; // normalized units per ms
+const STILL_SPEED_THRESHOLD = 0.00009; // normalized units per ms
+const MOTION_SPEED_THRESHOLD = 0.0002; // normalized units per ms
 const MOTION_CONFIRM_FRAMES = 5;
 const RISE_CONFIRM_FRAMES = 3;
 const MIN_RECORDING_MS = 50;
