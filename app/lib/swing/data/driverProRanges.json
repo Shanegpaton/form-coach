@@ -6,7 +6,7 @@
     "ianDriver",
     "rickieDriver"
   ],
-  "generatedAt": "2026-04-11T23:32:00.154Z",
+  "generatedAt": "2026-04-12T01:43:04.977Z",
   "numericRanges": {
     "metadata.durationMs": {
       "min": 3000,
@@ -156,12 +156,6 @@
       "min": -151.22251790788076,
       "max": -101.44534254993229,
       "mean": -115.6946723788243,
-      "n": 4
-    },
-    "swingPath.planeConsistency": {
-      "min": 186.19797032300846,
-      "max": 9821.73854564223,
-      "mean": 4481.539928288255,
       "n": 4
     },
     "stability.headMovement": {
@@ -334,12 +328,6 @@
       "observedMin": -151.22251790788076,
       "observedMax": -101.44534254993229
     },
-    "swingPath.planeConsistency": {
-      "low": -584.6452757025294,
-      "high": 10592.581791667768,
-      "observedMin": 186.19797032300846,
-      "observedMax": 9821.73854564223
-    },
     "stability.headMovement": {
       "low": 0.6948492830551516,
       "high": 1.122439696817685,
@@ -361,6 +349,7 @@
   },
   "bandsNote": "low/high widen each metric's observed min–max by ~8% of span (min 2% of |mean|) for coaching tolerance on small samples.",
   "pathTypeCounts": {
-    "outside-in": 4
+    "neutral": 3,
+    "outside-in": 1
   }
 }

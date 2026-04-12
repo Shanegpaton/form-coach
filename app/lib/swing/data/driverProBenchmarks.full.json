@@ -48,7 +48,7 @@
         }
       },
       "swingPath": {
-        "pathType": "outside-in",
+        "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
           "magnitude": 1.7374733671092257,
@@ -56,8 +56,7 @@
         },
         "transitionAngle": null,
         "downswingAngle": -106.08608499236618,
-        "pathSeverity": -106.08608499236618,
-        "planeConsistency": 7601.851622186147
+        "pathSeverity": -106.08608499236618
       },
       "stability": {
         "headMovement": 1.0929507027650966,
@@ -113,7 +112,7 @@
         }
       },
       "swingPath": {
-        "pathType": "outside-in",
+        "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
           "magnitude": 2.2408331707514866,
@@ -121,8 +120,7 @@
         },
         "transitionAngle": null,
         "downswingAngle": -104.024744065118,
-        "pathSeverity": -104.024744065118,
-        "planeConsistency": 186.19797032300846
+        "pathSeverity": -104.024744065118
       },
       "stability": {
         "headMovement": 1.0581968060524016,
@@ -178,7 +176,7 @@
         }
       },
       "swingPath": {
-        "pathType": "outside-in",
+        "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
           "magnitude": 1.9282128691461644,
@@ -186,8 +184,7 @@
         },
         "transitionAngle": null,
         "downswingAngle": -101.44534254993229,
-        "pathSeverity": -101.44534254993229,
-        "planeConsistency": 9821.73854564223
+        "pathSeverity": -101.44534254993229
       },
       "stability": {
         "headMovement": 0.7243382771077401,
@@ -251,8 +248,7 @@
         },
         "transitionAngle": null,
         "downswingAngle": -151.22251790788076,
-        "pathSeverity": -151.22251790788076,
-        "planeConsistency": 316.3715750016361
+        "pathSeverity": -151.22251790788076
       },
       "stability": {
         "headMovement": 0.8745056894696999,
@@ -311,7 +307,7 @@
           }
         },
         "swingPath": {
-          "pathType": "outside-in",
+          "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
             "magnitude": 1.7374733671092257,
@@ -319,8 +315,7 @@
           },
           "transitionAngle": null,
           "downswingAngle": -106.08608499236618,
-          "pathSeverity": -106.08608499236618,
-          "planeConsistency": 7601.851622186147
+          "pathSeverity": -106.08608499236618
         },
         "stability": {
           "headMovement": 1.0929507027650966,
@@ -376,7 +371,7 @@
           }
         },
         "swingPath": {
-          "pathType": "outside-in",
+          "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
             "magnitude": 2.2408331707514866,
@@ -384,8 +379,7 @@
           },
           "transitionAngle": null,
           "downswingAngle": -104.024744065118,
-          "pathSeverity": -104.024744065118,
-          "planeConsistency": 186.19797032300846
+          "pathSeverity": -104.024744065118
         },
         "stability": {
           "headMovement": 1.0581968060524016,
@@ -441,7 +435,7 @@
           }
         },
         "swingPath": {
-          "pathType": "outside-in",
+          "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
             "magnitude": 1.9282128691461644,
@@ -449,8 +443,7 @@
           },
           "transitionAngle": null,
           "downswingAngle": -101.44534254993229,
-          "pathSeverity": -101.44534254993229,
-          "planeConsistency": 9821.73854564223
+          "pathSeverity": -101.44534254993229
         },
         "stability": {
           "headMovement": 0.7243382771077401,
@@ -514,8 +507,7 @@
           },
           "transitionAngle": null,
           "downswingAngle": -151.22251790788076,
-          "pathSeverity": -151.22251790788076,
-          "planeConsistency": 316.3715750016361
+          "pathSeverity": -151.22251790788076
         },
         "stability": {
           "headMovement": 0.8745056894696999,
@@ -675,12 +667,6 @@
         "mean": -115.6946723788243,
         "n": 4
       },
-      "swingPath.planeConsistency": {
-        "min": 186.19797032300846,
-        "max": 9821.73854564223,
-        "mean": 4481.539928288255,
-        "n": 4
-      },
       "stability.headMovement": {
         "min": 0.7243382771077401,
         "max": 1.0929507027650966,
@@ -701,7 +687,8 @@
       }
     },
     "pathTypeCounts": {
-      "outside-in": 4
+      "neutral": 3,
+      "outside-in": 1
     }
   }
 }

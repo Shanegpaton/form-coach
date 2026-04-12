@@ -70,7 +70,6 @@ export type SwingAnalysis = {
     transitionAngle: number | null;
     downswingAngle: number | null;
     pathSeverity: number | null;
-    planeConsistency: number | null;
   };
 
   // Stability + posture maintenance
@@ -91,7 +90,8 @@ type context = {
   torsoLength: number | null;
 };
 
-const PATH_ANGLE_THRESHOLD_DEG = 5;
+const PATH_ANGLE_THRESHOLD_DEG = 10;
+const NEUTRAL_PATH_ANGLE_DEG = -105;
 
 function finiteOrNull(n: number): number | null {
   if (!Number.isFinite(n)) return null;
@@ -447,31 +447,12 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
 
   let pathType: SwingAnalysis["swingPath"]["pathType"] = "neutral";
   if (downswingAngle !== null) {
-    if (downswingAngle > PATH_ANGLE_THRESHOLD_DEG) pathType = "inside-out";
-    else if (downswingAngle < -PATH_ANGLE_THRESHOLD_DEG) pathType = "outside-in";
+    if (downswingAngle > NEUTRAL_PATH_ANGLE_DEG + PATH_ANGLE_THRESHOLD_DEG) pathType = "inside-out";
+    else if (downswingAngle < NEUTRAL_PATH_ANGLE_DEG - PATH_ANGLE_THRESHOLD_DEG) pathType = "outside-in";
     else pathType = "neutral";
   }
 
   const pathSeverity = downswingAngle !== null ? finiteOrNull(downswingAngle) : null;
-
-  const segmentAngles: number[] = [];
-  const tTop = ctx.topFrame.timestamp;
-  const tImp = ctx.impactFrame.timestamp;
-  const tLo = Math.min(tTop, tImp);
-  const tHi = Math.max(tTop, tImp);
-  for (let i = 0; i < ctx.recordedFrames.length - 1; i++) {
-    const fa = ctx.recordedFrames[i];
-    const fb = ctx.recordedFrames[i + 1];
-    const segMin = Math.min(fa.timestamp, fb.timestamp);
-    const segMax = Math.max(fa.timestamp, fb.timestamp);
-    if (segMax < tLo || segMin > tHi) continue;
-    const a = fa.leftWrist;
-    const b = fb.leftWrist;
-    if (!a || !b) continue;
-    const ang = Math.atan2(b.y - a.y, b.x - a.x) * (180 / Math.PI);
-    if (Number.isFinite(ang)) segmentAngles.push(ang);
-  }
-  const planeConsistency = varianceSample(segmentAngles);
 
   return {
     pathType,
@@ -480,7 +461,6 @@ function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
     transitionAngle,
     downswingAngle,
     pathSeverity,
-    planeConsistency,
   };
 }
 
