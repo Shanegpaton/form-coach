@@ -192,7 +192,7 @@ export default function CameraStream() {
         : null;
 
   return (
-    <div className="w-full max-w-2xl space-y-5 leading-normal">
+    <div className="w-full space-y-5 leading-normal">
       <div className="overflow-hidden rounded-xl bg-zinc-950 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800">
         {/*
           Video must be display:block — inline <video> leaves a baseline gap under the frame; the
