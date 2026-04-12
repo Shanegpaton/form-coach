@@ -31,7 +31,8 @@ const btnFocus =
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { landmarks, frameData } = usePoseDetection(videoRef);
+  const { landmarks, frameData, startCamera, cameraError, hasCamera, isModelReady } =
+    usePoseDetection(videoRef);
   const { status, isArmed, isRecording, fullBodyFramed, recordedFrames, arm, cancel } =
     useAutoSwingCapture(frameData);
 
@@ -41,10 +42,17 @@ export default function CameraStream() {
   const [coachText, setCoachText] = useState<string>('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
+  const [cameraStartPending, setCameraStartPending] = useState(false);
 
   const statusMessage = useMemo(() => {
     if (status === 'idle') {
-      return 'Camera ready. Arm recording when you are set up.';
+      if (!isModelReady) {
+        return 'Loading pose model…';
+      }
+      if (!hasCamera) {
+        return 'Tap Arm recording to turn on the camera. On a phone, you must allow access when prompted—this only works after you tap.';
+      }
+      return 'Camera on. Arm recording when you are set up.';
     }
     if (status === 'armed_waiting_still' && !fullBodyFramed) {
       return 'Step back until your head through your ankles stay in frame.';
@@ -64,7 +72,7 @@ export default function CameraStream() {
         : 'Capture finished.';
     }
     return '';
-  }, [status, fullBodyFramed, lastSwing]);
+  }, [status, fullBodyFramed, lastSwing, hasCamera, isModelReady]);
 
   const frameHint = useMemo(() => {
     if (status === 'armed_waiting_still' && !fullBodyFramed) {
@@ -178,7 +186,30 @@ export default function CameraStream() {
         ? 'Swing when ready…'
         : status === 'recording'
           ? 'Recording…'
-          : 'Arm recording';
+          : cameraStartPending
+            ? 'Starting camera…'
+            : !isModelReady
+              ? 'Loading pose model…'
+              : 'Arm recording';
+
+  function handlePrimaryClick() {
+    if (isArmed || isRecording) {
+      cancel();
+      return;
+    }
+    void (async () => {
+      if (cameraStartPending || !isModelReady) return;
+      try {
+        setCameraStartPending(true);
+        await startCamera();
+        arm();
+      } catch {
+        /* cameraError set in usePoseDetection */
+      } finally {
+        setCameraStartPending(false);
+      }
+    })();
+  }
 
   const durationSec =
     lastSwing != null && lastSwing.metadata.durationMs != null
@@ -193,6 +224,14 @@ export default function CameraStream() {
 
   return (
     <div className="w-full space-y-5 leading-normal">
+      {cameraError ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40 sm:px-5"
+          role="status"
+        >
+          <p className="text-sm text-amber-950 dark:text-amber-100">{cameraError}</p>
+        </div>
+      ) : null}
       <div className="overflow-hidden rounded-xl bg-zinc-950 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800">
         {/*
           Video must be display:block — inline <video> leaves a baseline gap under the frame; the
@@ -202,7 +241,6 @@ export default function CameraStream() {
         <div className="relative">
           <video
             ref={videoRef}
-            autoPlay
             playsInline
             muted
             className="block h-auto w-full rounded-none"
@@ -232,8 +270,11 @@ export default function CameraStream() {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
+          disabled={
+            cameraStartPending || (status === 'idle' && !isModelReady)
+          }
           className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:w-auto ${btnFocus}`}
-          onClick={isArmed || isRecording ? cancel : arm}
+          onClick={handlePrimaryClick}
         >
           {buttonLabel}
         </button>
