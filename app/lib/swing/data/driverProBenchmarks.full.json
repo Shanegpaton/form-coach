@@ -2,48 +2,48 @@
   "perSwing": {
     "billyDriver": {
       "metadata": {
-        "durationMs": 4375,
+        "durationMs": 2000,
         "handedness": "right"
       },
       "posture": {
         "spineAngle": {
-          "setup": -74.15669234069439,
-          "top": -73.45818237125904,
-          "impact": -73.15421182166698
+          "setup": -69.25529268378777,
+          "top": -71.78681497463052,
+          "impact": -80.64011255637622
         },
         "kneeFlex": {
-          "min": 162.3259924197685,
-          "setup": 175.22578439370125,
-          "top": 163.96114658164603,
-          "impact": 179.73386160142442
+          "min": 168.2623825293217,
+          "setup": 169.2278592579819,
+          "top": 166.4390449027406,
+          "impact": 177.5488750609101
         }
       },
       "kinematics": {
         "shoulderTilt": {
-          "max": 177.95259610119697,
-          "setup": 30.623410059314025,
-          "top": 104.60093534376426,
-          "impact": 42.50530156193322
+          "max": 166.07111431797827,
+          "setup": 32.48858882543555,
+          "top": null,
+          "impact": 143.20345120625774
         },
         "hipTilt": {
-          "max": 178.57907745637004,
-          "top": 161.28222846101482,
-          "impact": 30.833693694761948
+          "max": 178.56690040314274,
+          "top": null,
+          "impact": 155.86247720519992
         },
         "weightShift": {
-          "lateralHipMovement": -0.12281584125906934
+          "lateralHipMovement": -0.024080951276912732
         }
       },
       "sequencing": {
         "timing": {
           "absolute": {
-            "hipPeakMs": 2500,
-            "shoulderPeakMs": 187.5,
-            "topMs": 3437.5,
-            "impactMs": 3875
+            "hipPeakMs": 1062.5,
+            "shoulderPeakMs": 1000,
+            "topMs": 1937.5,
+            "impactMs": 1625
           },
           "relative": {
-            "hipVsShoulderMs": -2312.5
+            "hipVsShoulderMs": -62.5
           }
         }
       },
@@ -51,124 +51,60 @@
         "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
-          "magnitude": 1.7374733671092257,
-          "angleDeg": -106.08608499236618
+          "magnitude": 1.4803288294377774,
+          "angleDeg": -100.05923885563728
         },
         "transitionAngle": null,
-        "downswingAngle": -106.08608499236618,
-        "pathSeverity": -106.08608499236618
+        "downswingAngle": -100.05923885563728,
+        "pathSeverity": -100.05923885563728
       },
       "stability": {
-        "headMovement": 1.0929507027650966,
-        "headRise": 0.1902098555094094,
-        "hipRise": -0.046372097572834045
+        "headMovement": 0.2915693655350025,
+        "headRise": 0.2273076967282092,
+        "hipRise": -0.031014089131897123
       }
     },
     "danDriver": {
       "metadata": {
-        "durationMs": 5125,
+        "durationMs": 1500,
         "handedness": "right"
       },
       "posture": {
         "spineAngle": {
-          "setup": -68.2968235071457,
-          "top": -68.17565408672566,
-          "impact": -74.75438324969822
+          "setup": -69.28731002819161,
+          "top": -67.74505223695564,
+          "impact": -75.57143250990967
         },
         "kneeFlex": {
-          "min": 153.4638095587334,
-          "setup": 161.38445645936028,
-          "top": 156.0997256811611,
-          "impact": 179.9140451703273
+          "min": 154.91499363057503,
+          "setup": 156.7168273896948,
+          "top": 159.0055906326906,
+          "impact": 173.11010585266766
         }
       },
       "kinematics": {
         "shoulderTilt": {
-          "max": 157.84425807492372,
-          "setup": 55.61204132715602,
-          "top": 118.00667347851999,
-          "impact": 40.88646957413358
+          "max": 172.9117347476193,
+          "setup": 47.125947766743806,
+          "top": null,
+          "impact": 133.02847698471862
         },
         "hipTilt": {
-          "max": 168.2986080339597,
-          "top": 166.47547146957208,
-          "impact": 27.26053680525001
+          "max": 171.93403944853438,
+          "top": null,
+          "impact": 150.07389204840317
         },
         "weightShift": {
-          "lateralHipMovement": 0.08723302360524186
+          "lateralHipMovement": -0.007309933706935605
         }
       },
       "sequencing": {
         "timing": {
           "absolute": {
-            "hipPeakMs": 4312.5,
-            "shoulderPeakMs": 3500,
-            "topMs": 4312.5,
-            "impactMs": 4625
-          },
-          "relative": {
-            "hipVsShoulderMs": -812.5
-          }
-        }
-      },
-      "swingPath": {
-        "pathType": "neutral",
-        "backswingVector": null,
-        "downswingVector": {
-          "magnitude": 2.2408331707514866,
-          "angleDeg": -104.024744065118
-        },
-        "transitionAngle": null,
-        "downswingAngle": -104.024744065118,
-        "pathSeverity": -104.024744065118
-      },
-      "stability": {
-        "headMovement": 1.0581968060524016,
-        "headRise": 0.43625968672407683,
-        "hipRise": 0.09735715441911014
-      }
-    },
-    "ianDriver": {
-      "metadata": {
-        "durationMs": 4187.5,
-        "handedness": "right"
-      },
-      "posture": {
-        "spineAngle": {
-          "setup": -75.30857345255384,
-          "top": -74.01230404228706,
-          "impact": -76.46110357949657
-        },
-        "kneeFlex": {
-          "min": 159.70402076380716,
-          "setup": 171.99983595687982,
-          "top": 160.84588634905057,
-          "impact": 177.66372346689764
-        }
-      },
-      "kinematics": {
-        "shoulderTilt": {
-          "max": 175.8747890850358,
-          "setup": 36.25600950065253,
-          "top": 138.95512730706562,
-          "impact": 22.992823885967123
-        },
-        "hipTilt": {
-          "max": 172.97126443795872,
-          "top": 162.84149347023683,
-          "impact": 21.916616339040257
-        },
-        "weightShift": {
-          "lateralHipMovement": 0.09649136535038333
-        }
-      },
-      "sequencing": {
-        "timing": {
-          "absolute": {
-            "hipPeakMs": 1375,
-            "shoulderPeakMs": 1375,
-            "topMs": 3000,
-            "impactMs": 3312.5
+            "hipPeakMs": 687.5,
+            "shoulderPeakMs": 687.5,
+            "topMs": 1500,
+            "impactMs": 1250
           },
           "relative": {
             "hipVsShoulderMs": 0
@@ -179,81 +115,142 @@
         "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
-          "magnitude": 1.9282128691461644,
-          "angleDeg": -101.44534254993229
+          "magnitude": 1.8336869258088984,
+          "angleDeg": -101.71550458556717
         },
         "transitionAngle": null,
-        "downswingAngle": -101.44534254993229,
-        "pathSeverity": -101.44534254993229
+        "downswingAngle": -101.71550458556717,
+        "pathSeverity": -101.71550458556717
       },
       "stability": {
-        "headMovement": 0.7243382771077401,
-        "headRise": 0.2701184578109046,
-        "hipRise": 0.08127711223149436
+        "headMovement": 0.19707414111968533,
+        "headRise": 0.1841365733641471,
+        "hipRise": -0.000830494204473366
       }
     },
-    "rickieDriver": {
+    "ianDriver": {
       "metadata": {
-        "durationMs": 3000,
+        "durationMs": 1062.5,
         "handedness": "right"
       },
       "posture": {
         "spineAngle": {
-          "setup": -72.47610643053365,
-          "top": -80.3158837241431,
-          "impact": -72.55312438078008
+          "setup": -74.19021572555202,
+          "top": -73.60446667700427,
+          "impact": -77.0500067806972
         },
         "kneeFlex": {
-          "min": 154.3875430830516,
-          "setup": 172.08393499854975,
-          "top": 176.52439292036465,
-          "impact": 174.39226545858907
+          "min": 170.24499091833167,
+          "setup": 171.5762894548477,
+          "top": 160.5453253638375,
+          "impact": 178.44264297182178
         }
       },
       "kinematics": {
         "shoulderTilt": {
-          "max": 179.21750681797897,
-          "setup": 96.19440629072265,
+          "max": 149.61877309730167,
+          "setup": 34.208176240759094,
           "top": null,
-          "impact": 45.443681549234455
+          "impact": 139.62680083494834
         },
         "hipTilt": {
-          "max": 179.14034134728493,
+          "max": 167.18030799842492,
           "top": null,
-          "impact": 31.447242131436372
+          "impact": 145.83741116553088
         },
         "weightShift": {
-          "lateralHipMovement": -0.06322827402430918
+          "lateralHipMovement": 0.014346552398889616
         }
       },
       "sequencing": {
         "timing": {
           "absolute": {
-            "hipPeakMs": 1562.5,
-            "shoulderPeakMs": 1125,
-            "topMs": 2812.5,
-            "impactMs": 2562.5
+            "hipPeakMs": 312.5,
+            "shoulderPeakMs": 312.5,
+            "topMs": 1000,
+            "impactMs": 812.5
           },
           "relative": {
-            "hipVsShoulderMs": -437.5
+            "hipVsShoulderMs": 0
           }
         }
       },
       "swingPath": {
-        "pathType": "outside-in",
+        "pathType": "neutral",
         "backswingVector": null,
         "downswingVector": {
-          "magnitude": 0.16171302699892812,
-          "angleDeg": -151.22251790788076
+          "magnitude": 1.4790602408833295,
+          "angleDeg": -102.51910506932107
         },
         "transitionAngle": null,
-        "downswingAngle": -151.22251790788076,
-        "pathSeverity": -151.22251790788076
+        "downswingAngle": -102.51910506932107,
+        "pathSeverity": -102.51910506932107
       },
       "stability": {
-        "headMovement": 0.8745056894696999,
-        "headRise": -0.19395475077271515,
-        "hipRise": -0.05851494526613858
+        "headMovement": 0.09400900592852716,
+        "headRise": 0.14076337798281838,
+        "hipRise": -0.01680730230042572
+      }
+    },
+    "rickieDriver": {
+      "metadata": {
+        "durationMs": 1312.5,
+        "handedness": "right"
+      },
+      "posture": {
+        "spineAngle": {
+          "setup": -71.33193372130941,
+          "top": -71.33193372130941,
+          "impact": -71.33193372130941
+        },
+        "kneeFlex": {
+          "min": 165.29131410386438,
+          "setup": 165.29131410386438,
+          "top": 165.29131410386438,
+          "impact": 165.29131410386438
+        }
+      },
+      "kinematics": {
+        "shoulderTilt": {
+          "max": 111.7261994890403,
+          "setup": 111.7261994890403,
+          "top": 111.7261994890403,
+          "impact": 111.7261994890403
+        },
+        "hipTilt": {
+          "max": 161.96440903883735,
+          "top": 161.96440903883735,
+          "impact": 161.96440903883735
+        },
+        "weightShift": {
+          "lateralHipMovement": 0
+        }
+      },
+      "sequencing": {
+        "timing": {
+          "absolute": {
+            "hipPeakMs": 0,
+            "shoulderPeakMs": 0,
+            "topMs": 0,
+            "impactMs": 0
+          },
+          "relative": {
+            "hipVsShoulderMs": 0
+          }
+        }
+      },
+      "swingPath": {
+        "pathType": "neutral",
+        "backswingVector": null,
+        "downswingVector": null,
+        "transitionAngle": null,
+        "downswingAngle": null,
+        "pathSeverity": null
+      },
+      "stability": {
+        "headMovement": null,
+        "headRise": 0,
+        "hipRise": 0
       }
     }
   },
@@ -261,48 +258,48 @@
     "perSwing": {
       "billyDriver": {
         "metadata": {
-          "durationMs": 4375,
+          "durationMs": 2000,
           "handedness": "right"
         },
         "posture": {
           "spineAngle": {
-            "setup": -74.15669234069439,
-            "top": -73.45818237125904,
-            "impact": -73.15421182166698
+            "setup": -69.25529268378777,
+            "top": -71.78681497463052,
+            "impact": -80.64011255637622
           },
           "kneeFlex": {
-            "min": 162.3259924197685,
-            "setup": 175.22578439370125,
-            "top": 163.96114658164603,
-            "impact": 179.73386160142442
+            "min": 168.2623825293217,
+            "setup": 169.2278592579819,
+            "top": 166.4390449027406,
+            "impact": 177.5488750609101
           }
         },
         "kinematics": {
           "shoulderTilt": {
-            "max": 177.95259610119697,
-            "setup": 30.623410059314025,
-            "top": 104.60093534376426,
-            "impact": 42.50530156193322
+            "max": 166.07111431797827,
+            "setup": 32.48858882543555,
+            "top": null,
+            "impact": 143.20345120625774
           },
           "hipTilt": {
-            "max": 178.57907745637004,
-            "top": 161.28222846101482,
-            "impact": 30.833693694761948
+            "max": 178.56690040314274,
+            "top": null,
+            "impact": 155.86247720519992
           },
           "weightShift": {
-            "lateralHipMovement": -0.12281584125906934
+            "lateralHipMovement": -0.024080951276912732
           }
         },
         "sequencing": {
           "timing": {
             "absolute": {
-              "hipPeakMs": 2500,
-              "shoulderPeakMs": 187.5,
-              "topMs": 3437.5,
-              "impactMs": 3875
+              "hipPeakMs": 1062.5,
+              "shoulderPeakMs": 1000,
+              "topMs": 1937.5,
+              "impactMs": 1625
             },
             "relative": {
-              "hipVsShoulderMs": -2312.5
+              "hipVsShoulderMs": -62.5
             }
           }
         },
@@ -310,124 +307,60 @@
           "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
-            "magnitude": 1.7374733671092257,
-            "angleDeg": -106.08608499236618
+            "magnitude": 1.4803288294377774,
+            "angleDeg": -100.05923885563728
           },
           "transitionAngle": null,
-          "downswingAngle": -106.08608499236618,
-          "pathSeverity": -106.08608499236618
+          "downswingAngle": -100.05923885563728,
+          "pathSeverity": -100.05923885563728
         },
         "stability": {
-          "headMovement": 1.0929507027650966,
-          "headRise": 0.1902098555094094,
-          "hipRise": -0.046372097572834045
+          "headMovement": 0.2915693655350025,
+          "headRise": 0.2273076967282092,
+          "hipRise": -0.031014089131897123
         }
       },
       "danDriver": {
         "metadata": {
-          "durationMs": 5125,
+          "durationMs": 1500,
           "handedness": "right"
         },
         "posture": {
           "spineAngle": {
-            "setup": -68.2968235071457,
-            "top": -68.17565408672566,
-            "impact": -74.75438324969822
+            "setup": -69.28731002819161,
+            "top": -67.74505223695564,
+            "impact": -75.57143250990967
           },
           "kneeFlex": {
-            "min": 153.4638095587334,
-            "setup": 161.38445645936028,
-            "top": 156.0997256811611,
-            "impact": 179.9140451703273
+            "min": 154.91499363057503,
+            "setup": 156.7168273896948,
+            "top": 159.0055906326906,
+            "impact": 173.11010585266766
           }
         },
         "kinematics": {
           "shoulderTilt": {
-            "max": 157.84425807492372,
-            "setup": 55.61204132715602,
-            "top": 118.00667347851999,
-            "impact": 40.88646957413358
+            "max": 172.9117347476193,
+            "setup": 47.125947766743806,
+            "top": null,
+            "impact": 133.02847698471862
           },
           "hipTilt": {
-            "max": 168.2986080339597,
-            "top": 166.47547146957208,
-            "impact": 27.26053680525001
+            "max": 171.93403944853438,
+            "top": null,
+            "impact": 150.07389204840317
           },
           "weightShift": {
-            "lateralHipMovement": 0.08723302360524186
+            "lateralHipMovement": -0.007309933706935605
           }
         },
         "sequencing": {
           "timing": {
             "absolute": {
-              "hipPeakMs": 4312.5,
-              "shoulderPeakMs": 3500,
-              "topMs": 4312.5,
-              "impactMs": 4625
-            },
-            "relative": {
-              "hipVsShoulderMs": -812.5
-            }
-          }
-        },
-        "swingPath": {
-          "pathType": "neutral",
-          "backswingVector": null,
-          "downswingVector": {
-            "magnitude": 2.2408331707514866,
-            "angleDeg": -104.024744065118
-          },
-          "transitionAngle": null,
-          "downswingAngle": -104.024744065118,
-          "pathSeverity": -104.024744065118
-        },
-        "stability": {
-          "headMovement": 1.0581968060524016,
-          "headRise": 0.43625968672407683,
-          "hipRise": 0.09735715441911014
-        }
-      },
-      "ianDriver": {
-        "metadata": {
-          "durationMs": 4187.5,
-          "handedness": "right"
-        },
-        "posture": {
-          "spineAngle": {
-            "setup": -75.30857345255384,
-            "top": -74.01230404228706,
-            "impact": -76.46110357949657
-          },
-          "kneeFlex": {
-            "min": 159.70402076380716,
-            "setup": 171.99983595687982,
-            "top": 160.84588634905057,
-            "impact": 177.66372346689764
-          }
-        },
-        "kinematics": {
-          "shoulderTilt": {
-            "max": 175.8747890850358,
-            "setup": 36.25600950065253,
-            "top": 138.95512730706562,
-            "impact": 22.992823885967123
-          },
-          "hipTilt": {
-            "max": 172.97126443795872,
-            "top": 162.84149347023683,
-            "impact": 21.916616339040257
-          },
-          "weightShift": {
-            "lateralHipMovement": 0.09649136535038333
-          }
-        },
-        "sequencing": {
-          "timing": {
-            "absolute": {
-              "hipPeakMs": 1375,
-              "shoulderPeakMs": 1375,
-              "topMs": 3000,
-              "impactMs": 3312.5
+              "hipPeakMs": 687.5,
+              "shoulderPeakMs": 687.5,
+              "topMs": 1500,
+              "impactMs": 1250
             },
             "relative": {
               "hipVsShoulderMs": 0
@@ -438,257 +371,317 @@
           "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
-            "magnitude": 1.9282128691461644,
-            "angleDeg": -101.44534254993229
+            "magnitude": 1.8336869258088984,
+            "angleDeg": -101.71550458556717
           },
           "transitionAngle": null,
-          "downswingAngle": -101.44534254993229,
-          "pathSeverity": -101.44534254993229
+          "downswingAngle": -101.71550458556717,
+          "pathSeverity": -101.71550458556717
         },
         "stability": {
-          "headMovement": 0.7243382771077401,
-          "headRise": 0.2701184578109046,
-          "hipRise": 0.08127711223149436
+          "headMovement": 0.19707414111968533,
+          "headRise": 0.1841365733641471,
+          "hipRise": -0.000830494204473366
         }
       },
-      "rickieDriver": {
+      "ianDriver": {
         "metadata": {
-          "durationMs": 3000,
+          "durationMs": 1062.5,
           "handedness": "right"
         },
         "posture": {
           "spineAngle": {
-            "setup": -72.47610643053365,
-            "top": -80.3158837241431,
-            "impact": -72.55312438078008
+            "setup": -74.19021572555202,
+            "top": -73.60446667700427,
+            "impact": -77.0500067806972
           },
           "kneeFlex": {
-            "min": 154.3875430830516,
-            "setup": 172.08393499854975,
-            "top": 176.52439292036465,
-            "impact": 174.39226545858907
+            "min": 170.24499091833167,
+            "setup": 171.5762894548477,
+            "top": 160.5453253638375,
+            "impact": 178.44264297182178
           }
         },
         "kinematics": {
           "shoulderTilt": {
-            "max": 179.21750681797897,
-            "setup": 96.19440629072265,
+            "max": 149.61877309730167,
+            "setup": 34.208176240759094,
             "top": null,
-            "impact": 45.443681549234455
+            "impact": 139.62680083494834
           },
           "hipTilt": {
-            "max": 179.14034134728493,
+            "max": 167.18030799842492,
             "top": null,
-            "impact": 31.447242131436372
+            "impact": 145.83741116553088
           },
           "weightShift": {
-            "lateralHipMovement": -0.06322827402430918
+            "lateralHipMovement": 0.014346552398889616
           }
         },
         "sequencing": {
           "timing": {
             "absolute": {
-              "hipPeakMs": 1562.5,
-              "shoulderPeakMs": 1125,
-              "topMs": 2812.5,
-              "impactMs": 2562.5
+              "hipPeakMs": 312.5,
+              "shoulderPeakMs": 312.5,
+              "topMs": 1000,
+              "impactMs": 812.5
             },
             "relative": {
-              "hipVsShoulderMs": -437.5
+              "hipVsShoulderMs": 0
             }
           }
         },
         "swingPath": {
-          "pathType": "outside-in",
+          "pathType": "neutral",
           "backswingVector": null,
           "downswingVector": {
-            "magnitude": 0.16171302699892812,
-            "angleDeg": -151.22251790788076
+            "magnitude": 1.4790602408833295,
+            "angleDeg": -102.51910506932107
           },
           "transitionAngle": null,
-          "downswingAngle": -151.22251790788076,
-          "pathSeverity": -151.22251790788076
+          "downswingAngle": -102.51910506932107,
+          "pathSeverity": -102.51910506932107
         },
         "stability": {
-          "headMovement": 0.8745056894696999,
-          "headRise": -0.19395475077271515,
-          "hipRise": -0.05851494526613858
+          "headMovement": 0.09400900592852716,
+          "headRise": 0.14076337798281838,
+          "hipRise": -0.01680730230042572
+        }
+      },
+      "rickieDriver": {
+        "metadata": {
+          "durationMs": 1312.5,
+          "handedness": "right"
+        },
+        "posture": {
+          "spineAngle": {
+            "setup": -71.33193372130941,
+            "top": -71.33193372130941,
+            "impact": -71.33193372130941
+          },
+          "kneeFlex": {
+            "min": 165.29131410386438,
+            "setup": 165.29131410386438,
+            "top": 165.29131410386438,
+            "impact": 165.29131410386438
+          }
+        },
+        "kinematics": {
+          "shoulderTilt": {
+            "max": 111.7261994890403,
+            "setup": 111.7261994890403,
+            "top": 111.7261994890403,
+            "impact": 111.7261994890403
+          },
+          "hipTilt": {
+            "max": 161.96440903883735,
+            "top": 161.96440903883735,
+            "impact": 161.96440903883735
+          },
+          "weightShift": {
+            "lateralHipMovement": 0
+          }
+        },
+        "sequencing": {
+          "timing": {
+            "absolute": {
+              "hipPeakMs": 0,
+              "shoulderPeakMs": 0,
+              "topMs": 0,
+              "impactMs": 0
+            },
+            "relative": {
+              "hipVsShoulderMs": 0
+            }
+          }
+        },
+        "swingPath": {
+          "pathType": "neutral",
+          "backswingVector": null,
+          "downswingVector": null,
+          "transitionAngle": null,
+          "downswingAngle": null,
+          "pathSeverity": null
+        },
+        "stability": {
+          "headMovement": null,
+          "headRise": 0,
+          "hipRise": 0
         }
       }
     },
     "numericRanges": {
       "metadata.durationMs": {
-        "min": 3000,
-        "max": 5125,
-        "mean": 4171.875,
+        "min": 1062.5,
+        "max": 2000,
+        "mean": 1468.75,
         "n": 4
       },
       "posture.spineAngle.setup": {
-        "min": -75.30857345255384,
-        "max": -68.2968235071457,
-        "mean": -72.5595489327319,
+        "min": -74.19021572555202,
+        "max": -69.25529268378777,
+        "mean": -71.01618803971022,
         "n": 4
       },
       "posture.spineAngle.top": {
-        "min": -80.3158837241431,
-        "max": -68.17565408672566,
-        "mean": -73.99050605610373,
+        "min": -73.60446667700427,
+        "max": -67.74505223695564,
+        "mean": -71.11706690247496,
         "n": 4
       },
       "posture.spineAngle.impact": {
-        "min": -76.46110357949657,
-        "max": -72.55312438078008,
-        "mean": -74.23070575791047,
+        "min": -80.64011255637622,
+        "max": -71.33193372130941,
+        "mean": -76.14837139207313,
         "n": 4
       },
       "posture.kneeFlex.min": {
-        "min": 153.4638095587334,
-        "max": 162.3259924197685,
-        "mean": 157.47034145634018,
+        "min": 154.91499363057503,
+        "max": 170.24499091833167,
+        "mean": 164.6784202955232,
         "n": 4
       },
       "posture.kneeFlex.setup": {
-        "min": 161.38445645936028,
-        "max": 175.22578439370125,
-        "mean": 170.17350295212276,
+        "min": 156.7168273896948,
+        "max": 171.5762894548477,
+        "mean": 165.7030725515972,
         "n": 4
       },
       "posture.kneeFlex.top": {
-        "min": 156.0997256811611,
-        "max": 176.52439292036465,
-        "mean": 164.3577878830556,
+        "min": 159.0055906326906,
+        "max": 166.4390449027406,
+        "mean": 162.82031875078326,
         "n": 4
       },
       "posture.kneeFlex.impact": {
-        "min": 174.39226545858907,
-        "max": 179.9140451703273,
-        "mean": 177.92597392430963,
+        "min": 165.29131410386438,
+        "max": 178.44264297182178,
+        "mean": 173.59823449731596,
         "n": 4
       },
       "kinematics.shoulderTilt.max": {
-        "min": 157.84425807492372,
-        "max": 179.21750681797897,
-        "mean": 172.72228751978386,
+        "min": 111.7261994890403,
+        "max": 172.9117347476193,
+        "mean": 150.08195541298488,
         "n": 4
       },
       "kinematics.shoulderTilt.setup": {
-        "min": 30.623410059314025,
-        "max": 96.19440629072265,
-        "mean": 54.67146679446131,
+        "min": 32.48858882543555,
+        "max": 111.7261994890403,
+        "mean": 56.38722808049468,
         "n": 4
       },
-      "kinematics.shoulderTilt.top": {
-        "min": 104.60093534376426,
-        "max": 138.95512730706562,
-        "mean": 120.52091204311664,
-        "n": 3
-      },
       "kinematics.shoulderTilt.impact": {
-        "min": 22.992823885967123,
-        "max": 45.443681549234455,
-        "mean": 37.9570691428171,
+        "min": 111.7261994890403,
+        "max": 143.20345120625774,
+        "mean": 131.89623212874125,
         "n": 4
       },
       "kinematics.hipTilt.max": {
-        "min": 168.2986080339597,
-        "max": 179.14034134728493,
-        "mean": 174.74732281889334,
+        "min": 161.96440903883735,
+        "max": 178.56690040314274,
+        "mean": 169.91141422223484,
         "n": 4
       },
-      "kinematics.hipTilt.top": {
-        "min": 161.28222846101482,
-        "max": 166.47547146957208,
-        "mean": 163.53306446694125,
-        "n": 3
-      },
       "kinematics.hipTilt.impact": {
-        "min": 21.916616339040257,
-        "max": 31.447242131436372,
-        "mean": 27.864522242622147,
+        "min": 145.83741116553088,
+        "max": 161.96440903883735,
+        "mean": 153.4345473644928,
         "n": 4
       },
       "kinematics.weightShift.lateralHipMovement": {
-        "min": -0.12281584125906934,
-        "max": 0.09649136535038333,
-        "mean": -0.0005799315819383331,
+        "min": -0.024080951276912732,
+        "max": 0.014346552398889616,
+        "mean": -0.004261083146239681,
         "n": 4
       },
       "sequencing.timing.absolute.hipPeakMs": {
-        "min": 1375,
-        "max": 4312.5,
-        "mean": 2437.5,
+        "min": 0,
+        "max": 1062.5,
+        "mean": 515.625,
         "n": 4
       },
       "sequencing.timing.absolute.shoulderPeakMs": {
-        "min": 187.5,
-        "max": 3500,
-        "mean": 1546.875,
+        "min": 0,
+        "max": 1000,
+        "mean": 500,
         "n": 4
       },
       "sequencing.timing.absolute.topMs": {
-        "min": 2812.5,
-        "max": 4312.5,
-        "mean": 3390.625,
+        "min": 0,
+        "max": 1937.5,
+        "mean": 1109.375,
         "n": 4
       },
       "sequencing.timing.absolute.impactMs": {
-        "min": 2562.5,
-        "max": 4625,
-        "mean": 3593.75,
+        "min": 0,
+        "max": 1625,
+        "mean": 921.875,
         "n": 4
       },
       "sequencing.timing.relative.hipVsShoulderMs": {
-        "min": -2312.5,
+        "min": -62.5,
         "max": 0,
-        "mean": -890.625,
+        "mean": -15.625,
         "n": 4
       },
       "swingPath.downswingVector.magnitude": {
-        "min": 0.16171302699892812,
-        "max": 2.2408331707514866,
-        "mean": 1.5170581085014512,
-        "n": 4
+        "min": 1.4790602408833295,
+        "max": 1.8336869258088984,
+        "mean": 1.5976919987100018,
+        "n": 3
       },
       "swingPath.downswingVector.angleDeg": {
-        "min": -151.22251790788076,
-        "max": -101.44534254993229,
-        "mean": -115.6946723788243,
-        "n": 4
+        "min": -102.51910506932107,
+        "max": -100.05923885563728,
+        "mean": -101.43128283684185,
+        "n": 3
       },
       "swingPath.downswingAngle": {
-        "min": -151.22251790788076,
-        "max": -101.44534254993229,
-        "mean": -115.6946723788243,
-        "n": 4
+        "min": -102.51910506932107,
+        "max": -100.05923885563728,
+        "mean": -101.43128283684185,
+        "n": 3
       },
       "swingPath.pathSeverity": {
-        "min": -151.22251790788076,
-        "max": -101.44534254993229,
-        "mean": -115.6946723788243,
-        "n": 4
+        "min": -102.51910506932107,
+        "max": -100.05923885563728,
+        "mean": -101.43128283684185,
+        "n": 3
       },
       "stability.headMovement": {
-        "min": 0.7243382771077401,
-        "max": 1.0929507027650966,
-        "mean": 0.9374978688487345,
-        "n": 4
+        "min": 0.09400900592852716,
+        "max": 0.2915693655350025,
+        "mean": 0.19421750419440498,
+        "n": 3
       },
       "stability.headRise": {
-        "min": -0.19395475077271515,
-        "max": 0.43625968672407683,
-        "mean": 0.17565831231791892,
+        "min": 0,
+        "max": 0.2273076967282092,
+        "mean": 0.13805191201879366,
         "n": 4
       },
       "stability.hipRise": {
-        "min": -0.05851494526613858,
-        "max": 0.09735715441911014,
-        "mean": 0.018436805952907965,
+        "min": -0.031014089131897123,
+        "max": 0,
+        "mean": -0.012162971409199051,
         "n": 4
+      },
+      "kinematics.shoulderTilt.top": {
+        "min": 111.7261994890403,
+        "max": 111.7261994890403,
+        "mean": 111.7261994890403,
+        "n": 1
+      },
+      "kinematics.hipTilt.top": {
+        "min": 161.96440903883735,
+        "max": 161.96440903883735,
+        "mean": 161.96440903883735,
+        "n": 1
       }
     },
     "pathTypeCounts": {
-      "neutral": 3,
-      "outside-in": 1
+      "neutral": 4
     }
   }
 }

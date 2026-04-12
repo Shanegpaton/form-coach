@@ -90,8 +90,8 @@ type context = {
   torsoLength: number | null;
 };
 
-const PATH_ANGLE_THRESHOLD_DEG = 10;
-const NEUTRAL_PATH_ANGLE_DEG = -105;
+const PATH_ANGLE_THRESHOLD_DEG = 5;
+const NEUTRAL_PATH_ANGLE_DEG = -101;
 
 function finiteOrNull(n: number): number | null {
   if (!Number.isFinite(n)) return null;

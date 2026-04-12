@@ -24,6 +24,9 @@ function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
   return { landmark: '#00ff88', connector: '#00b4ff' };
 }
 
+const btnFocus =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-zinc-200';
+
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -37,6 +40,43 @@ export default function CameraStream() {
   const [coachText, setCoachText] = useState<string | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
+
+  const statusMessage = useMemo(() => {
+    if (status === 'idle') {
+      return 'Camera ready. Arm recording when you are set up.';
+    }
+    if (status === 'armed_waiting_still' && !fullBodyFramed) {
+      return 'Step back until your head through your ankles stay in frame.';
+    }
+    if (status === 'armed_waiting_still' && fullBodyFramed) {
+      return 'Hold still while we lock your setup.';
+    }
+    if (status === 'armed_waiting_motion') {
+      return 'Swing when you are ready.';
+    }
+    if (status === 'recording') {
+      return 'Recording your swing.';
+    }
+    if (status === 'completed') {
+      return lastSwing
+        ? 'Swing captured. Review the summary below or ask the coach.'
+        : 'Capture finished.';
+    }
+    return '';
+  }, [status, fullBodyFramed, lastSwing]);
+
+  const frameHint = useMemo(() => {
+    if (status === 'armed_waiting_still' && !fullBodyFramed) {
+      return 'Show head through ankles in the frame.';
+    }
+    if (
+      (status === 'armed_waiting_motion' || status === 'recording' || status === 'completed') &&
+      recordedFrames.length > 0
+    ) {
+      return `${recordedFrames.length} frames`;
+    }
+    return null;
+  }, [status, fullBodyFramed, recordedFrames.length]);
 
   useEffect(() => {
     const drawPose = (landmarksByPose: NormalizedLandmark[][], colors: PoseColors) => {
@@ -74,7 +114,6 @@ export default function CameraStream() {
   useEffect(() => {
     if (status === 'completed' && recordedFrames.length > 0) {
       const metrics = calculateSwingMetrics(recordedFrames);
-      console.log(metrics);
       setLastSwing(metrics ?? null);
       setCoachText(null);
       setCoachError(null);
@@ -97,7 +136,7 @@ export default function CameraStream() {
         setCoachError(data.error ?? res.statusText);
         return;
       }
-      if (data.text) {setCoachText(data.text); console.log(data.text);}
+      if (data.text) setCoachText(data.text);
       else setCoachError('Empty response from coach API');
     } catch (e) {
       setCoachError(e instanceof Error ? e.message : String(e));
@@ -109,64 +148,130 @@ export default function CameraStream() {
   const buttonLabel =
     status === 'armed_waiting_still'
       ? fullBodyFramed
-        ? 'Get still...'
-        : 'Step back — full body in frame'
+        ? 'Hold still…'
+        : 'Adjust position — full body in frame'
       : status === 'armed_waiting_motion'
-        ? 'Swing when ready...'
+        ? 'Swing when ready…'
         : status === 'recording'
-          ? 'Recording...'
+          ? 'Recording…'
           : 'Arm recording';
 
+  const durationSec =
+    lastSwing != null && lastSwing.metadata.durationMs != null
+      ? (lastSwing.metadata.durationMs / 1000).toFixed(2)
+      : null;
+  const handednessLabel =
+    lastSwing?.metadata.handedness === 'right'
+      ? 'Right-handed'
+      : lastSwing?.metadata.handedness === 'left'
+        ? 'Left-handed'
+        : null;
 
   return (
-    <div className="relative w-full max-w-2xl leading-none">
-      {/*
-        Video must be display:block — inline <video> leaves a baseline gap under the frame; the
-        absolute canvas then fills that extra height and landmarks (normalized to video pixels)
-        scale down, looking vertically offset from the picture.
-      */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="block h-auto w-full rounded-md"
-      />
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute left-0 top-0 block h-full w-full rounded-md"
-      />
-      <div className="mt-4 flex items-center gap-2">
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={isArmed || isRecording ? cancel : arm}>
+    <div className="w-full max-w-2xl space-y-5 leading-normal">
+      <div className="overflow-hidden rounded-xl bg-zinc-950 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800">
+        {/*
+          Video must be display:block — inline <video> leaves a baseline gap under the frame; the
+          absolute canvas then fills that extra height and landmarks (normalized to video pixels)
+          scale down, looking vertically offset from the picture.
+        */}
+        <div className="relative">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="block h-auto w-full rounded-none"
+          />
+          <canvas
+            ref={canvasRef}
+            className="pointer-events-none absolute left-0 top-0 block h-full w-full"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-5 sm:py-4">
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{statusMessage}</p>
+        {frameHint ? (
+          <p
+            className={`mt-1 text-sm ${
+              status === 'armed_waiting_still' && !fullBodyFramed
+                ? 'text-amber-800 dark:text-amber-200'
+                : 'text-zinc-500 dark:text-zinc-400'
+            }`}
+          >
+            {frameHint}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <button
+          type="button"
+          className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:w-auto ${btnFocus}`}
+          onClick={isArmed || isRecording ? cancel : arm}
+        >
           {buttonLabel}
         </button>
-        <div className="text-sm text-zinc-600">
-          {status === 'armed_waiting_still' && !fullBodyFramed ? (
-            <span className="text-amber-700">Show head through ankles in frame.</span>
-          ) : recordedFrames.length > 0 ? (
-            `Frames: ${recordedFrames.length}`
-          ) : null}
-        </div>
         {lastSwing ? (
           <button
             type="button"
             disabled={coachLoading}
-            className="rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
             onClick={() => void requestGeminiCoach()}
           >
-            {coachLoading ? 'Asking Gemini…' : 'Coach with AI (Gemini)'}
+            {coachLoading ? 'Asking coach…' : 'Coach with AI'}
           </button>
         ) : null}
       </div>
-      {coachError ? (
-        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{coachError}</p>
+
+      {lastSwing ? (
+        <section
+          className="rounded-xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-5"
+          aria-label="Last capture summary"
+        >
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Last capture
+          </h3>
+          <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            {durationSec ? (
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-400">Duration</dt>
+                <dd className="font-medium text-zinc-900 dark:text-zinc-100">{durationSec}s</dd>
+              </div>
+            ) : null}
+            {handednessLabel ? (
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-400">Stance</dt>
+                <dd className="font-medium text-zinc-900 dark:text-zinc-100">{handednessLabel}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
       ) : null}
-      {coachText ? (
-        <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-800 whitespace-pre-wrap">
-          {coachText}
+
+      {coachError ? (
+        <div
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/40 sm:px-5"
+          role="alert"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-800 dark:text-red-200">
+            Error
+          </p>
+          <p className="mt-2 text-sm text-red-900 dark:text-red-100">{coachError}</p>
         </div>
       ) : null}
+
+      {coachText ? (
+        <section className="rounded-xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-5">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Coach feedback
+          </h3>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+            {coachText}
+          </p>
+        </section>
+      ) : null}
     </div>
-    
   );
 }

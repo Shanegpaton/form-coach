@@ -6,350 +6,349 @@
     "ianDriver",
     "rickieDriver"
   ],
-  "generatedAt": "2026-04-12T14:54:18.323Z",
+  "generatedAt": "2026-04-12T15:15:43.285Z",
   "numericRanges": {
     "metadata.durationMs": {
-      "min": 3000,
-      "max": 5125,
-      "mean": 4171.875,
+      "min": 1062.5,
+      "max": 2000,
+      "mean": 1468.75,
       "n": 4
     },
     "posture.spineAngle.setup": {
-      "min": -75.30857345255384,
-      "max": -68.2968235071457,
-      "mean": -72.5595489327319,
+      "min": -74.19021572555202,
+      "max": -69.25529268378777,
+      "mean": -71.01618803971022,
       "n": 4
     },
     "posture.spineAngle.top": {
-      "min": -80.3158837241431,
-      "max": -68.17565408672566,
-      "mean": -73.99050605610373,
+      "min": -73.60446667700427,
+      "max": -67.74505223695564,
+      "mean": -71.11706690247496,
       "n": 4
     },
     "posture.spineAngle.impact": {
-      "min": -76.46110357949657,
-      "max": -72.55312438078008,
-      "mean": -74.23070575791047,
+      "min": -80.64011255637622,
+      "max": -71.33193372130941,
+      "mean": -76.14837139207313,
       "n": 4
     },
     "posture.kneeFlex.min": {
-      "min": 153.4638095587334,
-      "max": 162.3259924197685,
-      "mean": 157.47034145634018,
+      "min": 154.91499363057503,
+      "max": 170.24499091833167,
+      "mean": 164.6784202955232,
       "n": 4
     },
     "posture.kneeFlex.setup": {
-      "min": 161.38445645936028,
-      "max": 175.22578439370125,
-      "mean": 170.17350295212276,
+      "min": 156.7168273896948,
+      "max": 171.5762894548477,
+      "mean": 165.7030725515972,
       "n": 4
     },
     "posture.kneeFlex.top": {
-      "min": 156.0997256811611,
-      "max": 176.52439292036465,
-      "mean": 164.3577878830556,
+      "min": 159.0055906326906,
+      "max": 166.4390449027406,
+      "mean": 162.82031875078326,
       "n": 4
     },
     "posture.kneeFlex.impact": {
-      "min": 174.39226545858907,
-      "max": 179.9140451703273,
-      "mean": 177.92597392430963,
+      "min": 165.29131410386438,
+      "max": 178.44264297182178,
+      "mean": 173.59823449731596,
       "n": 4
     },
     "kinematics.shoulderTilt.max": {
-      "min": 157.84425807492372,
-      "max": 179.21750681797897,
-      "mean": 172.72228751978386,
+      "min": 111.7261994890403,
+      "max": 172.9117347476193,
+      "mean": 150.08195541298488,
       "n": 4
     },
     "kinematics.shoulderTilt.setup": {
-      "min": 30.623410059314025,
-      "max": 96.19440629072265,
-      "mean": 54.67146679446131,
+      "min": 32.48858882543555,
+      "max": 111.7261994890403,
+      "mean": 56.38722808049468,
       "n": 4
     },
-    "kinematics.shoulderTilt.top": {
-      "min": 104.60093534376426,
-      "max": 138.95512730706562,
-      "mean": 120.52091204311664,
-      "n": 3
-    },
     "kinematics.shoulderTilt.impact": {
-      "min": 22.992823885967123,
-      "max": 45.443681549234455,
-      "mean": 37.9570691428171,
+      "min": 111.7261994890403,
+      "max": 143.20345120625774,
+      "mean": 131.89623212874125,
       "n": 4
     },
     "kinematics.hipTilt.max": {
-      "min": 168.2986080339597,
-      "max": 179.14034134728493,
-      "mean": 174.74732281889334,
+      "min": 161.96440903883735,
+      "max": 178.56690040314274,
+      "mean": 169.91141422223484,
       "n": 4
     },
-    "kinematics.hipTilt.top": {
-      "min": 161.28222846101482,
-      "max": 166.47547146957208,
-      "mean": 163.53306446694125,
-      "n": 3
-    },
     "kinematics.hipTilt.impact": {
-      "min": 21.916616339040257,
-      "max": 31.447242131436372,
-      "mean": 27.864522242622147,
+      "min": 145.83741116553088,
+      "max": 161.96440903883735,
+      "mean": 153.4345473644928,
       "n": 4
     },
     "kinematics.weightShift.lateralHipMovement": {
-      "min": -0.12281584125906934,
-      "max": 0.09649136535038333,
-      "mean": -0.0005799315819383331,
+      "min": -0.024080951276912732,
+      "max": 0.014346552398889616,
+      "mean": -0.004261083146239681,
       "n": 4
     },
     "sequencing.timing.absolute.hipPeakMs": {
-      "min": 1375,
-      "max": 4312.5,
-      "mean": 2437.5,
+      "min": 0,
+      "max": 1062.5,
+      "mean": 515.625,
       "n": 4
     },
     "sequencing.timing.absolute.shoulderPeakMs": {
-      "min": 187.5,
-      "max": 3500,
-      "mean": 1546.875,
+      "min": 0,
+      "max": 1000,
+      "mean": 500,
       "n": 4
     },
     "sequencing.timing.absolute.topMs": {
-      "min": 2812.5,
-      "max": 4312.5,
-      "mean": 3390.625,
+      "min": 0,
+      "max": 1937.5,
+      "mean": 1109.375,
       "n": 4
     },
     "sequencing.timing.absolute.impactMs": {
-      "min": 2562.5,
-      "max": 4625,
-      "mean": 3593.75,
+      "min": 0,
+      "max": 1625,
+      "mean": 921.875,
       "n": 4
     },
     "sequencing.timing.relative.hipVsShoulderMs": {
-      "min": -2312.5,
+      "min": -62.5,
       "max": 0,
-      "mean": -890.625,
+      "mean": -15.625,
       "n": 4
     },
     "swingPath.downswingVector.magnitude": {
-      "min": 0.16171302699892812,
-      "max": 2.2408331707514866,
-      "mean": 1.5170581085014512,
-      "n": 4
+      "min": 1.4790602408833295,
+      "max": 1.8336869258088984,
+      "mean": 1.5976919987100018,
+      "n": 3
     },
     "swingPath.downswingVector.angleDeg": {
-      "min": -151.22251790788076,
-      "max": -101.44534254993229,
-      "mean": -115.6946723788243,
-      "n": 4
+      "min": -102.51910506932107,
+      "max": -100.05923885563728,
+      "mean": -101.43128283684185,
+      "n": 3
     },
     "swingPath.downswingAngle": {
-      "min": -151.22251790788076,
-      "max": -101.44534254993229,
-      "mean": -115.6946723788243,
-      "n": 4
+      "min": -102.51910506932107,
+      "max": -100.05923885563728,
+      "mean": -101.43128283684185,
+      "n": 3
     },
     "swingPath.pathSeverity": {
-      "min": -151.22251790788076,
-      "max": -101.44534254993229,
-      "mean": -115.6946723788243,
-      "n": 4
+      "min": -102.51910506932107,
+      "max": -100.05923885563728,
+      "mean": -101.43128283684185,
+      "n": 3
     },
     "stability.headMovement": {
-      "min": 0.7243382771077401,
-      "max": 1.0929507027650966,
-      "mean": 0.9374978688487345,
-      "n": 4
+      "min": 0.09400900592852716,
+      "max": 0.2915693655350025,
+      "mean": 0.19421750419440498,
+      "n": 3
     },
     "stability.headRise": {
-      "min": -0.19395475077271515,
-      "max": 0.43625968672407683,
-      "mean": 0.17565831231791892,
+      "min": 0,
+      "max": 0.2273076967282092,
+      "mean": 0.13805191201879366,
       "n": 4
     },
     "stability.hipRise": {
-      "min": -0.05851494526613858,
-      "max": 0.09735715441911014,
-      "mean": 0.018436805952907965,
+      "min": -0.031014089131897123,
+      "max": 0,
+      "mean": -0.012162971409199051,
       "n": 4
+    },
+    "kinematics.shoulderTilt.top": {
+      "min": 111.7261994890403,
+      "max": 111.7261994890403,
+      "mean": 111.7261994890403,
+      "n": 1
+    },
+    "kinematics.hipTilt.top": {
+      "min": 161.96440903883735,
+      "max": 161.96440903883735,
+      "mean": 161.96440903883735,
+      "n": 1
     }
   },
   "bands": {
     "metadata.durationMs": {
-      "low": 2830,
-      "high": 5295,
-      "observedMin": 3000,
-      "observedMax": 5125
+      "low": 987.5,
+      "high": 2075,
+      "observedMin": 1062.5,
+      "observedMax": 2000
     },
     "posture.spineAngle.setup": {
-      "low": -76.75976443120848,
-      "high": -66.84563252849107,
-      "observedMin": -75.30857345255384,
-      "observedMax": -68.2968235071457
+      "low": -75.61053948634623,
+      "high": -67.83496892299357,
+      "observedMin": -74.19021572555202,
+      "observedMax": -69.25529268378777
     },
     "posture.spineAngle.top": {
-      "low": -81.79569384526518,
-      "high": -66.69584396560359,
-      "observedMin": -80.3158837241431,
-      "observedMax": -68.17565408672566
+      "low": -75.02680801505377,
+      "high": -66.32271089890614,
+      "observedMin": -73.60446667700427,
+      "observedMax": -67.74505223695564
     },
     "posture.spineAngle.impact": {
-      "low": -77.94571769465477,
-      "high": -71.06851026562187,
-      "observedMin": -76.46110357949657,
-      "observedMax": -72.55312438078008
+      "low": -82.16307998421769,
+      "high": -69.80896629346795,
+      "observedMin": -80.64011255637622,
+      "observedMax": -71.33193372130941
     },
     "posture.kneeFlex.min": {
-      "low": 150.3144027296066,
-      "high": 165.47539924889531,
-      "observedMin": 153.4638095587334,
-      "observedMax": 162.3259924197685
+      "low": 151.62142522466456,
+      "high": 173.53855932424213,
+      "observedMin": 154.91499363057503,
+      "observedMax": 170.24499091833167
     },
     "posture.kneeFlex.setup": {
-      "low": 157.98098640031782,
-      "high": 178.6292544527437,
-      "observedMin": 161.38445645936028,
-      "observedMax": 175.22578439370125
+      "low": 153.40276593866287,
+      "high": 174.89035090587964,
+      "observedMin": 156.7168273896948,
+      "observedMax": 171.5762894548477
     },
     "posture.kneeFlex.top": {
-      "low": 152.81256992349998,
-      "high": 179.81154867802576,
-      "observedMin": 156.0997256811611,
-      "observedMax": 176.52439292036465
+      "low": 155.74918425767493,
+      "high": 169.69545127775626,
+      "observedMin": 159.0055906326906,
+      "observedMax": 166.4390449027406
     },
     "posture.kneeFlex.impact": {
-      "low": 170.83374598010286,
-      "high": 183.47256464881352,
-      "observedMin": 174.39226545858907,
-      "observedMax": 179.9140451703273
+      "low": 161.81934941391805,
+      "high": 181.91460766176812,
+      "observedMin": 165.29131410386438,
+      "observedMax": 178.44264297182178
     },
     "kinematics.shoulderTilt.max": {
-      "low": 154.38981232452804,
-      "high": 182.67195256837465,
-      "observedMin": 157.84425807492372,
-      "observedMax": 179.21750681797897
+      "low": 106.83135666835398,
+      "high": 177.8065775683056,
+      "observedMin": 111.7261994890403,
+      "observedMax": 172.9117347476193
     },
     "kinematics.shoulderTilt.setup": {
-      "low": 25.377730360801337,
-      "high": 101.44008598923534,
-      "observedMin": 30.623410059314025,
-      "observedMax": 96.19440629072265
-    },
-    "kinematics.shoulderTilt.top": {
-      "low": 101.85259998670016,
-      "high": 141.70346266412975,
-      "observedMin": 104.60093534376426,
-      "observedMax": 138.95512730706562
+      "low": 26.14957997234717,
+      "high": 118.06520834212867,
+      "observedMin": 32.48858882543555,
+      "observedMax": 111.7261994890403
     },
     "kinematics.shoulderTilt.impact": {
-      "low": 21.196755272905737,
-      "high": 47.23975016229584,
-      "observedMin": 22.992823885967123,
-      "observedMax": 45.443681549234455
+      "low": 109.08827484646547,
+      "high": 145.84137584883257,
+      "observedMin": 111.7261994890403,
+      "observedMax": 143.20345120625774
     },
     "kinematics.hipTilt.max": {
-      "low": 164.80366157758183,
-      "high": 182.6352878036628,
-      "observedMin": 168.2986080339597,
-      "observedMax": 179.14034134728493
-    },
-    "kinematics.hipTilt.top": {
-      "low": 158.011567171676,
-      "high": 169.7461327589109,
-      "observedMin": 161.28222846101482,
-      "observedMax": 166.47547146957208
+      "low": 158.56618075439266,
+      "high": 181.96512868758742,
+      "observedMin": 161.96440903883735,
+      "observedMax": 178.56690040314274
     },
     "kinematics.hipTilt.impact": {
-      "low": 21.154166275648567,
-      "high": 32.20969219482806,
-      "observedMin": 21.916616339040257,
-      "observedMax": 31.447242131436372
+      "low": 142.76872021824101,
+      "high": 165.0330999861272,
+      "observedMin": 145.83741116553088,
+      "observedMax": 161.96440903883735
     },
     "kinematics.weightShift.lateralHipMovement": {
-      "low": -0.14036041778782557,
-      "high": 0.11403594187913954,
-      "observedMin": -0.12281584125906934,
-      "observedMax": 0.09649136535038333
+      "low": -0.02715515157097692,
+      "high": 0.017420752692953803,
+      "observedMin": -0.024080951276912732,
+      "observedMax": 0.014346552398889616
     },
     "sequencing.timing.absolute.hipPeakMs": {
-      "low": 1140,
-      "high": 4547.5,
-      "observedMin": 1375,
-      "observedMax": 4312.5
+      "low": -85,
+      "high": 1147.5,
+      "observedMin": 0,
+      "observedMax": 1062.5
     },
     "sequencing.timing.absolute.shoulderPeakMs": {
-      "low": -77.5,
-      "high": 3765,
-      "observedMin": 187.5,
-      "observedMax": 3500
+      "low": -80,
+      "high": 1080,
+      "observedMin": 0,
+      "observedMax": 1000
     },
     "sequencing.timing.absolute.topMs": {
-      "low": 2692.5,
-      "high": 4432.5,
-      "observedMin": 2812.5,
-      "observedMax": 4312.5
+      "low": -155,
+      "high": 2092.5,
+      "observedMin": 0,
+      "observedMax": 1937.5
     },
     "sequencing.timing.absolute.impactMs": {
-      "low": 2397.5,
-      "high": 4790,
-      "observedMin": 2562.5,
-      "observedMax": 4625
+      "low": -130,
+      "high": 1755,
+      "observedMin": 0,
+      "observedMax": 1625
     },
     "sequencing.timing.relative.hipVsShoulderMs": {
-      "low": -2497.5,
-      "high": 185,
-      "observedMin": -2312.5,
+      "low": -67.5,
+      "high": 5,
+      "observedMin": -62.5,
       "observedMax": 0
     },
     "swingPath.downswingVector.magnitude": {
-      "low": -0.004616584501276555,
-      "high": 2.4071627822516914,
-      "observedMin": 0.16171302699892812,
-      "observedMax": 2.2408331707514866
+      "low": 1.4471064009091295,
+      "high": 1.8656407657830985,
+      "observedMin": 1.4790602408833295,
+      "observedMax": 1.8336869258088984
     },
     "swingPath.downswingVector.angleDeg": {
-      "low": -155.20469193651664,
-      "high": -97.46316852129641,
-      "observedMin": -151.22251790788076,
-      "observedMax": -101.44534254993229
+      "low": -104.5477307260579,
+      "high": -98.03061319890044,
+      "observedMin": -102.51910506932107,
+      "observedMax": -100.05923885563728
     },
     "swingPath.downswingAngle": {
-      "low": -155.20469193651664,
-      "high": -97.46316852129641,
-      "observedMin": -151.22251790788076,
-      "observedMax": -101.44534254993229
+      "low": -104.5477307260579,
+      "high": -98.03061319890044,
+      "observedMin": -102.51910506932107,
+      "observedMax": -100.05923885563728
     },
     "swingPath.pathSeverity": {
-      "low": -155.20469193651664,
-      "high": -97.46316852129641,
-      "observedMin": -151.22251790788076,
-      "observedMax": -101.44534254993229
+      "low": -104.5477307260579,
+      "high": -98.03061319890044,
+      "observedMin": -102.51910506932107,
+      "observedMax": -100.05923885563728
     },
     "stability.headMovement": {
-      "low": 0.6948492830551516,
-      "high": 1.122439696817685,
-      "observedMin": 0.7243382771077401,
-      "observedMax": 1.0929507027650966
+      "low": 0.07820417716000913,
+      "high": 0.30737419430352053,
+      "observedMin": 0.09400900592852716,
+      "observedMax": 0.2915693655350025
     },
     "stability.headRise": {
-      "low": -0.24437190577245851,
-      "high": 0.4866768417238202,
-      "observedMin": -0.19395475077271515,
-      "observedMax": 0.43625968672407683
+      "low": -0.018184615738256735,
+      "high": 0.2454923124664659,
+      "observedMin": 0,
+      "observedMax": 0.2273076967282092
     },
     "stability.hipRise": {
-      "low": -0.07098471324095848,
-      "high": 0.10982692239393003,
-      "observedMin": -0.05851494526613858,
-      "observedMax": 0.09735715441911014
+      "low": -0.03349521626244889,
+      "high": 0.00248112713055177,
+      "observedMin": -0.031014089131897123,
+      "observedMax": 0
+    },
+    "kinematics.shoulderTilt.top": {
+      "low": 109.49167549925949,
+      "high": 113.96072347882111,
+      "observedMin": 111.7261994890403,
+      "observedMax": 111.7261994890403
+    },
+    "kinematics.hipTilt.top": {
+      "low": 158.7251208580606,
+      "high": 165.2036972196141,
+      "observedMin": 161.96440903883735,
+      "observedMax": 161.96440903883735
     }
   },
   "bandsNote": "low/high widen each metric's observed min–max by ~8% of span (min 2% of |mean|) for coaching tolerance on small samples.",
   "pathTypeCounts": {
-    "neutral": 3,
-    "outside-in": 1
+    "neutral": 4
   }
 }

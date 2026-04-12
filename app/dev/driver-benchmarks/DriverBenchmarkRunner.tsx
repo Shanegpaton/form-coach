@@ -209,13 +209,17 @@ export default function DriverBenchmarkRunner() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <p className="text-sm text-zinc-600">
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Temporary batch: samples each driver clip at {SAMPLE_FPS} fps, runs the same metrics as live capture.
         Video element is appended to <code className="text-xs">document.body</code> so React Strict Mode cannot
         detach it mid-run.
       </p>
-      <p className="text-sm font-medium" id="driver-benchmark-status" data-status={status}>
+      <p
+        className="text-sm font-medium text-zinc-900 dark:text-zinc-100"
+        id="driver-benchmark-status"
+        data-status={status}
+      >
         {status === "idle" && "Starting…"}
         {status === "running" && message}
         {status === "done" && message}
@@ -223,7 +227,7 @@ export default function DriverBenchmarkRunner() {
       </p>
       <pre
         id="driver-benchmark-json"
-        className="max-h-[70vh] overflow-auto rounded-md bg-zinc-900 p-4 text-xs text-zinc-100"
+        className="max-h-[70vh] overflow-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-100"
       >
         {exportJson || (status === "running" ? "…" : "")}
       </pre>
