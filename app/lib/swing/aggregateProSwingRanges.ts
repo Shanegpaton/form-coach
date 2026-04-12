@@ -15,8 +15,6 @@ export type ProSwingRangeSummary = {
   perSwing: Record<string, SwingAnalysis | null>;
   numericRanges: Record<string, NumericMetricRange>;
   pathTypeCounts: CategoricalBreakdown;
-  hipLeadTrueCount: number;
-  hipLeadTotal: number;
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -87,8 +85,6 @@ export function buildProSwingRangeSummary(
 ): ProSwingRangeSummary {
   const flats: Record<string, number>[] = [];
   const pathTypeCounts: CategoricalBreakdown = {};
-  let hipLeadTrueCount = 0;
-  let hipLeadTotal = 0;
 
   for (const analysis of Object.values(perSwing)) {
     if (!analysis) continue;
@@ -97,15 +93,11 @@ export function buildProSwingRangeSummary(
     const pt = analysis.swingPath.pathType;
     pathTypeCounts[pt] = (pathTypeCounts[pt] ?? 0) + 1;
 
-    if (analysis.sequencing.hipLead === true) hipLeadTrueCount += 1;
-    if (analysis.sequencing.hipLead === true || analysis.sequencing.hipLead === false) hipLeadTotal += 1;
   }
 
   return {
     perSwing,
     numericRanges: aggregateNumericRanges(flats),
     pathTypeCounts,
-    hipLeadTrueCount,
-    hipLeadTotal,
   };
 }

@@ -19,9 +19,6 @@
         }
       },
       "kinematics": {
-        "leadElbowBend": {
-          "min": 10.137065439791225
-        },
         "shoulderTilt": {
           "max": 177.95259610119697,
           "setup": 30.623410059314025,
@@ -48,8 +45,7 @@
           "relative": {
             "hipVsShoulderMs": -2312.5
           }
-        },
-        "hipLead": false
+        }
       },
       "swingPath": {
         "pathType": "outside-in",
@@ -88,9 +84,6 @@
         }
       },
       "kinematics": {
-        "leadElbowBend": {
-          "min": 123.48246386110124
-        },
         "shoulderTilt": {
           "max": 157.84425807492372,
           "setup": 55.61204132715602,
@@ -117,8 +110,7 @@
           "relative": {
             "hipVsShoulderMs": -812.5
           }
-        },
-        "hipLead": false
+        }
       },
       "swingPath": {
         "pathType": "outside-in",
@@ -157,9 +149,6 @@
         }
       },
       "kinematics": {
-        "leadElbowBend": {
-          "min": 139.93318319697696
-        },
         "shoulderTilt": {
           "max": 175.8747890850358,
           "setup": 36.25600950065253,
@@ -186,8 +175,7 @@
           "relative": {
             "hipVsShoulderMs": 0
           }
-        },
-        "hipLead": false
+        }
       },
       "swingPath": {
         "pathType": "outside-in",
@@ -226,9 +214,6 @@
         }
       },
       "kinematics": {
-        "leadElbowBend": {
-          "min": 89.55481951168832
-        },
         "shoulderTilt": {
           "max": 179.21750681797897,
           "setup": 96.19440629072265,
@@ -255,8 +240,7 @@
           "relative": {
             "hipVsShoulderMs": -437.5
           }
-        },
-        "hipLead": false
+        }
       },
       "swingPath": {
         "pathType": "outside-in",
@@ -298,9 +282,6 @@
           }
         },
         "kinematics": {
-          "leadElbowBend": {
-            "min": 10.137065439791225
-          },
           "shoulderTilt": {
             "max": 177.95259610119697,
             "setup": 30.623410059314025,
@@ -327,8 +308,7 @@
             "relative": {
               "hipVsShoulderMs": -2312.5
             }
-          },
-          "hipLead": false
+          }
         },
         "swingPath": {
           "pathType": "outside-in",
@@ -367,9 +347,6 @@
           }
         },
         "kinematics": {
-          "leadElbowBend": {
-            "min": 123.48246386110124
-          },
           "shoulderTilt": {
             "max": 157.84425807492372,
             "setup": 55.61204132715602,
@@ -396,8 +373,7 @@
             "relative": {
               "hipVsShoulderMs": -812.5
             }
-          },
-          "hipLead": false
+          }
         },
         "swingPath": {
           "pathType": "outside-in",
@@ -436,9 +412,6 @@
           }
         },
         "kinematics": {
-          "leadElbowBend": {
-            "min": 139.93318319697696
-          },
           "shoulderTilt": {
             "max": 175.8747890850358,
             "setup": 36.25600950065253,
@@ -465,8 +438,7 @@
             "relative": {
               "hipVsShoulderMs": 0
             }
-          },
-          "hipLead": false
+          }
         },
         "swingPath": {
           "pathType": "outside-in",
@@ -505,9 +477,6 @@
           }
         },
         "kinematics": {
-          "leadElbowBend": {
-            "min": 89.55481951168832
-          },
           "shoulderTilt": {
             "max": 179.21750681797897,
             "setup": 96.19440629072265,
@@ -534,8 +503,7 @@
             "relative": {
               "hipVsShoulderMs": -437.5
             }
-          },
-          "hipLead": false
+          }
         },
         "swingPath": {
           "pathType": "outside-in",
@@ -603,12 +571,6 @@
         "min": 174.39226545858907,
         "max": 179.9140451703273,
         "mean": 177.92597392430963,
-        "n": 4
-      },
-      "kinematics.leadElbowBend.min": {
-        "min": 10.137065439791225,
-        "max": 139.93318319697696,
-        "mean": 90.77688300238943,
         "n": 4
       },
       "kinematics.shoulderTilt.max": {
@@ -689,12 +651,6 @@
         "mean": -890.625,
         "n": 4
       },
-      "sequencing.hipLead": {
-        "min": 0,
-        "max": 0,
-        "mean": 0,
-        "n": 4
-      },
       "swingPath.downswingVector.magnitude": {
         "min": 0.16171302699892812,
         "max": 2.2408331707514866,
@@ -746,8 +702,6 @@
     },
     "pathTypeCounts": {
       "outside-in": 4
-    },
-    "hipLeadTrueCount": 0,
-    "hipLeadTotal": 4
+    }
   }
 }

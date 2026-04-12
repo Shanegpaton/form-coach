@@ -6,7 +6,7 @@
     "ianDriver",
     "rickieDriver"
   ],
-  "generatedAt": "2026-04-11T23:05:42.484Z",
+  "generatedAt": "2026-04-11T23:32:00.154Z",
   "numericRanges": {
     "metadata.durationMs": {
       "min": 3000,
@@ -54,12 +54,6 @@
       "min": 174.39226545858907,
       "max": 179.9140451703273,
       "mean": 177.92597392430963,
-      "n": 4
-    },
-    "kinematics.leadElbowBend.min": {
-      "min": 10.137065439791225,
-      "max": 139.93318319697696,
-      "mean": 90.77688300238943,
       "n": 4
     },
     "kinematics.shoulderTilt.max": {
@@ -138,12 +132,6 @@
       "min": -2312.5,
       "max": 0,
       "mean": -890.625,
-      "n": 4
-    },
-    "sequencing.hipLead": {
-      "min": 0,
-      "max": 0,
-      "mean": 0,
       "n": 4
     },
     "swingPath.downswingVector.magnitude": {
@@ -244,12 +232,6 @@
       "observedMin": 174.39226545858907,
       "observedMax": 179.9140451703273
     },
-    "kinematics.leadElbowBend.min": {
-      "low": -0.24662398078363346,
-      "high": 150.3168726175518,
-      "observedMin": 10.137065439791225,
-      "observedMax": 139.93318319697696
-    },
     "kinematics.shoulderTilt.max": {
       "low": 154.38981232452804,
       "high": 182.67195256837465,
@@ -328,12 +310,6 @@
       "observedMin": -2312.5,
       "observedMax": 0
     },
-    "sequencing.hipLead": {
-      "low": -0.000001,
-      "high": 0.000001,
-      "observedMin": 0,
-      "observedMax": 0
-    },
     "swingPath.downswingVector.magnitude": {
       "low": -0.004616584501276555,
       "high": 2.4071627822516914,
@@ -386,9 +362,5 @@
   "bandsNote": "low/high widen each metric's observed min–max by ~8% of span (min 2% of |mean|) for coaching tolerance on small samples.",
   "pathTypeCounts": {
     "outside-in": 4
-  },
-  "hipLead": {
-    "trueCount": 0,
-    "total": 4
   }
 }

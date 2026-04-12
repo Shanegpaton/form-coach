@@ -24,9 +24,6 @@ export type SwingAnalysis = {
 
   // Joint + rotation mechanics
   kinematics: {
-    leadElbowBend: {
-      min: number | null;
-    };
 
     shoulderTilt: {
       max: number | null;
@@ -62,7 +59,6 @@ export type SwingAnalysis = {
         hipVsShoulderMs: number | null;
       };
     };
-    hipLead: boolean | null;
   };
 
   // Swing path (club path approximation via wrists)
@@ -298,17 +294,7 @@ function calculatePosture(context: context) {
 
 function calculateKinematics(context: context) {
   const T = context.torsoLength;
-  let leadElbowMin = Infinity;
-  for (const f of context.recordedFrames) {
-    if (f.timestamp > context.impactFrame.timestamp) break;
-    if (f.leftElbow && f.leftWrist && f.leftShoulder) {
-      const leadElbow = threeJoinAngle(f.leftShoulder, f.leftElbow, f.leftWrist);
-      if (leadElbow !== null && leadElbow < leadElbowMin) {
-        leadElbowMin = leadElbow;
-      }
-    }
-  }
-  if (leadElbowMin === Infinity) leadElbowMin = null;
+
 
   let shoulderMax = -Infinity;
   let shoulderSetup = null;
@@ -359,10 +345,6 @@ function calculateKinematics(context: context) {
   }
 
   return {
-    leadElbowBend: {
-      min: leadElbowMin,
-    },
-  
     shoulderTilt: {
       max: shoulderMax,
       setup: shoulderSetup,
@@ -415,12 +397,10 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
 
   const t0 = ctx.recordingStartTimestamp;
   let hipVsShoulderMs: number | null = null;
-  let hipLead: boolean | null = null;
 
   if (hipPeakTs !== null && shoulderPeakTs !== null) {
     if (Number.isFinite(hipPeakTs) && Number.isFinite(shoulderPeakTs)) {
       hipVsShoulderMs = finiteOrNull(shoulderPeakTs - hipPeakTs);
-      hipLead = hipPeakTs < shoulderPeakTs;
     }
   }
 
@@ -436,7 +416,6 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
         hipVsShoulderMs,
       },
     },
-    hipLead,
   };
 }
 
