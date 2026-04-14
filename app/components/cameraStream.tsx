@@ -42,6 +42,8 @@ export default function CameraStream() {
   const [coachText, setCoachText] = useState<string>('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
+  /** One coach run per capture; cleared when a new swing completes. */
+  const [coachConsumedForCapture, setCoachConsumedForCapture] = useState(false);
   const [cameraStartPending, setCameraStartPending] = useState(false);
 
   const statusMessage = useMemo(() => {
@@ -126,11 +128,13 @@ export default function CameraStream() {
       setLastSwing(metrics ?? null);
       setCoachText('');
       setCoachError(null);
+      setCoachConsumedForCapture(false);
     }
   }, [status, recordedFrames]);
 
   async function requestGeminiCoach() {
-    if (!lastSwing) return;
+    if (!lastSwing || coachConsumedForCapture || coachLoading) return;
+    setCoachConsumedForCapture(true);
     setCoachLoading(true);
     setCoachError(null);
     setCoachText('');
@@ -281,11 +285,20 @@ export default function CameraStream() {
         {lastSwing ? (
           <button
             type="button"
-            disabled={coachLoading}
+            disabled={coachLoading || coachConsumedForCapture}
+            title={
+              coachConsumedForCapture && !coachLoading
+                ? 'Coach already ran for this capture. Arm recording and take another swing to use Coach again.'
+                : undefined
+            }
             className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
             onClick={() => void requestGeminiCoach()}
           >
-            {coachLoading ? 'Coach is responding…' : 'Coach with AI'}
+            {coachLoading
+              ? 'Coach is responding…'
+              : coachConsumedForCapture
+                ? 'Coach already used'
+                : 'Coach with AI'}
           </button>
         ) : null}
       </div>

@@ -28,6 +28,12 @@ const MOTION_SPEED_THRESHOLD = 0.0002; // normalized units per ms
 const MOTION_CONFIRM_FRAMES = 5;
 const RISE_CONFIRM_FRAMES = 3;
 const MIN_RECORDING_MS = 50;
+/** After the lowest point, if hands stop getting "deeper" on screen this long, end (follow-through often hides wrists—2D y never "rises"). */
+const POST_DEEP_PLATEAU_MS = 580;
+/** Do not plateau-stop until the clip is at least this long (avoids cutting off a paused or very slow downswing). */
+const MIN_RECORDING_BEFORE_PLATEAU_MS = 850;
+/** Hard cap so recording cannot run forever if heuristics miss. */
+const MAX_RECORDING_MS = 7000;
 /** In normalized coords, y grows downward. Min y = top of backswing; must drop this much before we treat "deep" + follow-through. */
 const DROP_FROM_APEX_Y = 0.055;
 /** Wrist moving up on screen (y decreasing) after deepest point of arc. */
@@ -119,11 +125,27 @@ function speedBetween(prev: { t: number; p: Point2D }, curr: { t: number; p: Poi
 }
 
 /**
+ * Single screen-y for hand height during recording: average of visible wrists, else lead-side elbow fallback.
+ * When hands pass behind the torso, one wrist often drops out or 2D y stalls—averaging + elbow helps; plateau stop handles the rest.
+ */
+function recordingHandY(kp: Keypoints): number | null {
+  const ys: number[] = [];
+  if (kp.leftWrist) ys.push(kp.leftWrist.y);
+  if (kp.rightWrist) ys.push(kp.rightWrist.y);
+  if (ys.length > 0) {
+    return ys.reduce((a, b) => a + b, 0) / ys.length;
+  }
+  if (kp.leftElbow) return kp.leftElbow.y;
+  if (kp.rightElbow) return kp.rightElbow.y;
+  return null;
+}
+
+/**
  * Auto-capture flow:
  * - user clicks Arm
  * - wait for ~1s of stillness (low motion)
  * - once still, wait for consistent motion to start recording
- * - stop when left wrist has passed the bottom of the arc (max y) and is rising on screen (y decreasing) — post-impact proxy
+ * - stop when hands have passed the bottom of the arc and rise on screen (y decreasing), **or** after a post-bottom plateau (hands vanish / move behind body in 2D), **or** at max duration.
  */
 export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCaptureResult {
   const [status, setStatus] = useState<AutoSwingStatus>('idle');
@@ -149,6 +171,7 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
   /** Largest y since exiting apex = hands lowest on screen (through impact). */
   const deepYRef = useRef<number | null>(null);
   const riseConfirmRef = useRef<number>(0);
+  const lastDeepGrowthTsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!frameData) return;
@@ -216,10 +239,11 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
           if (motionConfirmRef.current >= MOTION_CONFIRM_FRAMES) {
             recordedRef.current = [];
             recordStartTsRef.current = kp.timestamp;
-            apexYRef.current = kp.leftWrist?.y ?? null;
+            apexYRef.current = recordingHandY(kp);
             hasExitedApexRef.current = false;
             deepYRef.current = null;
             riseConfirmRef.current = 0;
+            lastDeepGrowthTsRef.current = null;
             recordedRef.current.push(kp);
             setStatus('recording');
             rafId = requestAnimationFrame(tick);
@@ -234,32 +258,63 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
         recordedRef.current.push(kp);
 
         const startTs = recordStartTsRef.current;
-        if (startTs != null && kp.timestamp - startTs >= MIN_RECORDING_MS) {
-          const wy = kp.leftWrist?.y;
-          if (wy != null && Number.isFinite(wy)) {
-            const apex = apexYRef.current;
-            if (apex == null) apexYRef.current = wy;
-            else if (wy < apex) apexYRef.current = wy;
+        if (startTs != null) {
+          const elapsed = kp.timestamp - startTs;
+          if (elapsed >= MAX_RECORDING_MS) {
+            setRecordedFrames(recordedRef.current);
+            setStatus('completed');
+            return;
+          }
 
-            const apexNow = apexYRef.current;
-            if (!hasExitedApexRef.current && apexNow != null && wy > apexNow + DROP_FROM_APEX_Y) {
-              hasExitedApexRef.current = true;
-              deepYRef.current = wy;
+          if (elapsed >= MIN_RECORDING_MS) {
+            const wy = recordingHandY(kp);
+            if (wy != null && Number.isFinite(wy)) {
+              const apex = apexYRef.current;
+              if (apex == null) apexYRef.current = wy;
+              else if (wy < apex) apexYRef.current = wy;
+
+              const apexNow = apexYRef.current;
+              if (!hasExitedApexRef.current && apexNow != null && wy > apexNow + DROP_FROM_APEX_Y) {
+                hasExitedApexRef.current = true;
+                deepYRef.current = wy;
+                lastDeepGrowthTsRef.current = kp.timestamp;
+              }
+
+              if (hasExitedApexRef.current) {
+                const deepBefore = deepYRef.current;
+                const deep = deepYRef.current;
+                if (deep == null) deepYRef.current = wy;
+                else deepYRef.current = Math.max(deep, wy);
+
+                const deepNow = deepYRef.current;
+                if (deepBefore != null && deepNow > deepBefore + 1e-6) {
+                  lastDeepGrowthTsRef.current = kp.timestamp;
+                } else if (deepBefore == null && deepNow != null) {
+                  lastDeepGrowthTsRef.current = kp.timestamp;
+                }
+
+                const risingOnScreen = wy < deepNow - RISE_FROM_DEEP_EPS;
+                riseConfirmRef.current = risingOnScreen ? riseConfirmRef.current + 1 : 0;
+                if (riseConfirmRef.current >= RISE_CONFIRM_FRAMES) {
+                  setRecordedFrames(recordedRef.current);
+                  setStatus('completed');
+                  return;
+                }
+
+              }
             }
 
-            if (hasExitedApexRef.current) {
-              const deep = deepYRef.current;
-              if (deep == null) deepYRef.current = wy;
-              else deepYRef.current = Math.max(deep, wy);
-
-              const deepNow = deepYRef.current;
-              const risingOnScreen = wy < deepNow - RISE_FROM_DEEP_EPS;
-              riseConfirmRef.current = risingOnScreen ? riseConfirmRef.current + 1 : 0;
-              if (riseConfirmRef.current >= RISE_CONFIRM_FRAMES) {
-                setRecordedFrames(recordedRef.current);
-                setStatus('completed');
-                return;
-              }
+            // End even when this frame has no wrist/elbow y (hands behind body): depth has plateaued long enough.
+            const plateauTs = lastDeepGrowthTsRef.current;
+            if (
+              hasExitedApexRef.current &&
+              plateauTs != null &&
+              elapsed >= MIN_RECORDING_BEFORE_PLATEAU_MS &&
+              kp.timestamp - plateauTs >= POST_DEEP_PLATEAU_MS
+            ) {
+              setRecordedFrames(recordedRef.current);
+              setStatus('completed');
+              return;
             }
           }
         }
@@ -288,6 +343,7 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     hasExitedApexRef.current = false;
     deepYRef.current = null;
     riseConfirmRef.current = 0;
+    lastDeepGrowthTsRef.current = null;
     setStatus('armed_waiting_still');
   }, []);
 
@@ -304,6 +360,7 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     hasExitedApexRef.current = false;
     deepYRef.current = null;
     riseConfirmRef.current = 0;
+    lastDeepGrowthTsRef.current = null;
     setStatus('idle');
   }, []);
 

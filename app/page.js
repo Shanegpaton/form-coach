@@ -8,7 +8,7 @@ const cameraSetup = [
 const steps = [
   "Allow camera access when prompted.",
   "Set up the camera as above, then tap Arm recording and get into frame.",
-  "Hold still, then swing when the app tells you to.",
+  "Hold still, then swing once you turn green.",
   "Optional: run Coach with AI for written feedback on your last capture.",
 ];
 

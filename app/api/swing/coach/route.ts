@@ -80,6 +80,7 @@ Your job:
 
 Style rules (VERY IMPORTANT):
 - Speak like a coach, NOT a data analyst.
+- **No opening filler:** Do not start with praise, hedging, or a warm-up summary (e.g. "overall you've got some good elements", "your swing looks solid but", "there's a lot to like", "first off the good news"). Jump straight into the **first** highest-priority issue in plain language—the first sentence should already be coaching content.
 - Do NOT include raw numbers (degrees, milliseconds, etc.) unless absolutely necessary.
 - Instead, describe differences using terms like:
   "slightly", "too much", "very upright", "more than typical", "less than ideal".
@@ -87,7 +88,7 @@ Style rules (VERY IMPORTANT):
 - Translate all metrics into simple golf concepts (setup, balance, swing path, rotation).
 
 Output format:
-- Max 2 short paragraphs.
+- Max 2 short paragraphs (first paragraph = first issue immediately—no standalone intro).
 - Then a small bullet list of fixes.
 - Use **bold** for key concepts and fixes.
 - Keep it clear, simple, and actionable.
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
     referenceRanges: rangesForCoach,
   };
 
-  const userPrompt = `## User swing (JSON)\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\nGive coaching feedback comparing the user to the reference (posture, kinematics, path, stability—not user ms vs pro timing). Weight issues by metricImportance.`;
+  const userPrompt = `## User swing (JSON)\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\nGive coaching feedback comparing the user to the reference (posture, kinematics, path, stability—not user ms vs pro timing). Weight issues by metricImportance. **First sentence = first concrete issue**—no praise-only or "overall" intro paragraph.`;
 
   try {
     const result = streamText({
