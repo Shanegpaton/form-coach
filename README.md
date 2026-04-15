@@ -1,37 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Computer Vision Swing Coach
 
-## Getting Started
+Real-time golf swing coaching with browser-based pose tracking and AI-generated feedback.  
+This project captures a single driver swing from webcam video, computes biomechanical metrics, and translates those into concise coaching cues.
 
-First, run the development server:
+## Why This Project
+
+- Shows end-to-end product thinking: UX flow, motion capture, metrics pipeline, and coaching output.
+- Demonstrates practical computer vision in a real-time, user-facing app.
+- Bridges raw model output and human-friendly guidance with domain-aware prompt design.
+
+## Demo
+
+- Live app: `ADD_DEPLOY_URL`
+- Short walkthrough video (60-90s): `ADD_VIDEO_URL`
+- Swing capture + coaching example GIF: `ADD_GIF_URL`
+
+> If you are evaluating this repository for hiring, the quickest way to review is:
+> 1) watch the walkthrough, 2) scan `app/hooks/useAutoSwingCapture.ts`, 3) scan `app/api/swing/coach/route.ts`.
+
+## Core Features
+
+- Real-time webcam pose detection in the browser.
+- Auto arm -> stillness validation -> motion-triggered swing recording.
+- Heuristic swing end detection robust to hand occlusion during follow-through.
+- Computation of posture, path, kinematic, and stability metrics from captured frames.
+- AI coach endpoint that turns metrics into actionable golf feedback (with priority weighting and guardrails).
+- Streamed coaching response rendering in the UI.
+
+## Technical Highlights
+
+- **Frontend + runtime:** Next.js App Router, React, TypeScript.
+- **Pose tracking:** MediaPipe Tasks Vision.
+- **AI integration:** Google Gemini via `ai-sdk` streaming.
+- **Pipeline design:** deterministic metric extraction + constrained LLM prompting.
+- **UX focus:** status-driven guidance, framing checks, and one-coach-request-per-capture controls.
+
+## Architecture (High Level)
+
+1. Camera feed initializes in `app/components/cameraStream.tsx`.
+2. Pose landmarks are read frame-by-frame via `usePoseDetection`.
+3. `useAutoSwingCapture` handles state machine transitions:
+   - `idle` -> `armed_waiting_still` -> `armed_waiting_motion` -> `recording` -> `completed`
+4. Captured keypoints are converted into swing metrics.
+5. Metrics are posted to `app/api/swing/coach/route.ts`.
+6. Prompt and reference data produce short-form coaching text streamed back to the UI.
+
+## Notable Engineering Decisions
+
+- **Separate capture heuristics from coaching logic** for clearer iteration and reliability.
+- **Omit non-comparable timing dimensions** when referencing pro ranges to avoid false coaching.
+- **Prioritize metric importance** so feedback focuses on impact-driving issues, not noisy stats.
+- **Constrain output style** to produce practical coaching language instead of generic analysis.
+
+## Local Setup
+
+### Prerequisites
+
+- Node.js 18+ (or current LTS)
+- npm
+- A webcam-enabled device/browser
+
+### Install
+
+```bash
+npm install
+```
+
+### Environment
+
+Create `.env.local`:
+
+```bash
+GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+```
+
+### Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - start local development server
+- `npm run build` - production build
+- `npm run start` - run production server
+- `npm run lint` - lint checks
 
-## Learn More
+## What I Would Build Next
 
-To learn more about Next.js, take a look at the following resources:
+- Save and compare multiple swings over time for progress tracking.
+- Add side-by-side frame overlays against reference swing phases.
+- Introduce confidence scoring per metric based on landmark quality/visibility.
+- Expand to club-specific models and coaching profiles.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Repository Guide
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `app/components/cameraStream.tsx` - primary user workflow/UI
+- `app/hooks/useAutoSwingCapture.ts` - swing capture state machine + stop heuristics
+- `app/lib/swing/calculateSwingMetrics.ts` - metric computation
+- `app/api/swing/coach/route.ts` - AI coaching API + prompt constraints
+- `app/lib/swing/data/*` - reference ranges and metric priority metadata
 
-## Deploy on Vercel
+## Contact
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# form-coach
+Created by `YOUR_NAME`  
+LinkedIn: `ADD_LINKEDIN_URL`  
+Portfolio: `ADD_PORTFOLIO_URL`
