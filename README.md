@@ -11,12 +11,9 @@ This project captures a single driver swing from webcam video, computes biomecha
 
 ## Demo
 
-- Live app: `ADD_DEPLOY_URL`
+- Live app: [https://swing-coach-ochre.vercel.app](https://swing-coach-ochre.vercel.app/)
 - Short walkthrough video (60-90s): `ADD_VIDEO_URL`
 - Swing capture + coaching example GIF: `ADD_GIF_URL`
-
-> If you are evaluating this repository for hiring, the quickest way to review is:
-> 1) watch the walkthrough, 2) scan `app/hooks/useAutoSwingCapture.ts`, 3) scan `app/api/swing/coach/route.ts`.
 
 ## Core Features
 
@@ -106,6 +103,6 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Contact
 
-Created by `YOUR_NAME`  
-LinkedIn: `ADD_LINKEDIN_URL`  
-Portfolio: `ADD_PORTFOLIO_URL`
+Created by `Shane Paton`  
+LinkedIn: [www.linkedin.com/in/shanepaton](www.linkedin.com/in/shanepaton)  
+Portfolio: [shanepaton.com](shanepaton.com)
