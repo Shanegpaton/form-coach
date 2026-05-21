@@ -17,6 +17,9 @@ export type FrameData = {
   joints: JointCoordinate[];
 };
 
+const TARGET_POSE_FPS = 30;
+const MIN_POSE_INTERVAL_MS = 1000 / TARGET_POSE_FPS;
+
 function humanMediaError(e: unknown): string {
   if (e instanceof DOMException) {
     if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
@@ -53,6 +56,7 @@ export function usePoseDetection(
   const animationFrameIdRef = useRef(0);
   const videoFrameCallbackIdRef = useRef(0);
   const lastVideoTimestampMsRef = useRef<number | null>(null);
+  const detectionErrorCountRef = useRef(0);
   const detectingRef = useRef(false);
   const startingRef = useRef(false);
 
@@ -75,6 +79,7 @@ export function usePoseDetection(
       videoFrameCallbackIdRef.current = 0;
     }
     lastVideoTimestampMsRef.current = null;
+    detectionErrorCountRef.current = 0;
   }, [videoRef]);
 
   const detectCurrentVideoFrame = useCallback(
@@ -89,17 +94,26 @@ export function usePoseDetection(
       }
       lastVideoTimestampMsRef.current = timestamp;
 
-      const result = detector.detectForVideo(video, timestamp);
-      setLandmarks(result.landmarks ?? []);
-      const firstPose = result.landmarks?.[0] ?? [];
-      const joints = firstPose.map((joint) => ({
-        x: joint.x,
-        y: joint.y,
-        z: joint.z,
-        visibility: joint.visibility,
-      }));
-      setFrameData({ timestamp, joints });
-      return true;
+      try {
+        const result = detector.detectForVideo(video, timestamp);
+        detectionErrorCountRef.current = 0;
+        setLandmarks(result.landmarks ?? []);
+        const firstPose = result.landmarks?.[0] ?? [];
+        const joints = firstPose.map((joint) => ({
+          x: joint.x,
+          y: joint.y,
+          z: joint.z,
+          visibility: joint.visibility,
+        }));
+        setFrameData({ timestamp, joints });
+        return true;
+      } catch (error) {
+        detectionErrorCountRef.current += 1;
+        if (detectionErrorCountRef.current <= 3) {
+          console.warn('Pose detection skipped a frame:', error);
+        }
+        return false;
+      }
     },
     [videoRef],
   );
@@ -109,9 +123,12 @@ export function usePoseDetection(
     if (!detectingRef.current || !video) return;
 
     if (video.requestVideoFrameCallback) {
-      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((_now, metadata) => {
+      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((now) => {
         if (!detectingRef.current) return;
-        detectCurrentVideoFrame(metadata.mediaTime * 1000);
+        const lastTimestamp = lastVideoTimestampMsRef.current;
+        if (lastTimestamp == null || now - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+          detectCurrentVideoFrame(now);
+        }
         scheduleVideoFrameDetection();
       });
       return;
@@ -119,8 +136,11 @@ export function usePoseDetection(
 
     animationFrameIdRef.current = requestAnimationFrame(() => {
       if (!detectingRef.current) return;
-      const fallbackTimestamp = video.currentTime > 0 ? video.currentTime * 1000 : performance.now();
-      detectCurrentVideoFrame(fallbackTimestamp);
+      const now = performance.now();
+      const lastTimestamp = lastVideoTimestampMsRef.current;
+      if (lastTimestamp == null || now - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+        detectCurrentVideoFrame(now);
+      }
       scheduleVideoFrameDetection();
     });
   }, [detectCurrentVideoFrame, videoRef]);
