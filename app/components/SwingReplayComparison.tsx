@@ -8,9 +8,10 @@ type SwingReplayComparisonProps = {
   frames: Keypoints[];
   swingVideoUrl: string | null;
   swingVideoClipStartSeconds?: number;
+  swingVideoSize?: { width: number; height: number } | null;
 };
 
-type KeypointName = Exclude<keyof Keypoints, 'timestamp'>;
+type KeypointName = Exclude<keyof Keypoints, 'timestamp' | 'sourceWidth' | 'sourceHeight'>;
 type ReplaySpeed = (typeof SPEED_OPTIONS)[number];
 type UserReplayMode = 'pose' | 'video';
 
@@ -171,10 +172,21 @@ function cappedUserVideoDuration(videoDuration: number, poseDuration: number): n
   return Number.isFinite(videoDuration) && videoDuration > 0 ? videoDuration : 0;
 }
 
+function validVideoSize(size: SwingReplayComparisonProps['swingVideoSize']) {
+  return (
+    size != null &&
+    Number.isFinite(size.width) &&
+    Number.isFinite(size.height) &&
+    size.width > 0 &&
+    size.height > 0
+  );
+}
+
 export function SwingReplayComparison({
   frames,
   swingVideoUrl,
   swingVideoClipStartSeconds = 0,
+  swingVideoSize = null,
 }: SwingReplayComparisonProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const userVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -220,6 +232,11 @@ export function SwingReplayComparison({
   const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
   const userScrubMax = activeUserVideo ? Math.max(userVideoReplayDuration, 0) : Math.max(0, frameCount - 1);
   const userScrubValue = activeUserVideo ? userVideoTime : currentIndex;
+  const userMediaStyle = {
+    aspectRatio: validVideoSize(swingVideoSize)
+      ? `${swingVideoSize.width} / ${swingVideoSize.height}`
+      : '16 / 9',
+  };
 
   const setPoseScrubProgress = useCallback((nextProgress: number) => {
     const bounded = Math.max(0, Math.min(1, nextProgress));
@@ -418,7 +435,7 @@ export function SwingReplayComparison({
 
           <figure className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
             {activeUserVideo ? (
-              <div className="relative aspect-video bg-zinc-950">
+              <div className="relative bg-zinc-950" style={userMediaStyle}>
                 <video
                   ref={userVideoRef}
                   key={userVideoClipKey}
@@ -475,7 +492,7 @@ export function SwingReplayComparison({
                 ) : null}
               </div>
             ) : (
-              <canvas ref={canvasRef} className="block aspect-video w-full" />
+              <canvas ref={canvasRef} className="block w-full" style={userMediaStyle} />
             )}
             <figcaption className="border-t border-white/10 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
               {activeUserVideo ? 'Recorded video' : 'Pose replay'}

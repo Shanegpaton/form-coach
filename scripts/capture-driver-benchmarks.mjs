@@ -58,7 +58,12 @@ async function main() {
     const browser = await chromium.launch({
       executablePath: useChrome ? MAC_CHROME : undefined,
       headless: true,
-      args: ["--headless=new", "--autoplay-policy=no-user-gesture-required"],
+      args: [
+        "--headless=new",
+        "--autoplay-policy=no-user-gesture-required",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader",
+      ],
     });
     const page = await browser.newPage();
     page.setDefaultTimeout(900000);

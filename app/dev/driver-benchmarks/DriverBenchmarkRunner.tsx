@@ -98,7 +98,12 @@ async function sampleVideoToKeypoints(
       z: joint.z,
       visibility: joint.visibility,
     }));
-    const frameData: FrameData = { timestamp: tsMs, joints };
+    const frameData: FrameData = {
+      timestamp: tsMs,
+      joints,
+      sourceWidth: video.videoWidth,
+      sourceHeight: video.videoHeight,
+    };
     frames.push(toKeypoints(frameData));
   }
   return frames;
@@ -137,6 +142,7 @@ export default function DriverBenchmarkRunner() {
           /** New graph per clip — VIDEO mode timestamps must not reset across files. */
           landmarker = await PoseLandmarker.createFromOptions(vision, {
             baseOptions: {
+              delegate: "CPU",
               modelAssetPath:
                 "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
             },

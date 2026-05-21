@@ -18,6 +18,8 @@ export type Joint = {
 
 export type Keypoints = {
   timestamp: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
   rightEar: Joint | null;
   leftShoulder: Joint | null;
   rightShoulder: Joint | null;
@@ -36,6 +38,8 @@ export type Keypoints = {
 function extractKeypoints(frameData) {
   return {
     timestamp: frameData.timestamp,
+    sourceWidth: frameData.sourceWidth,
+    sourceHeight: frameData.sourceHeight,
     rightEar:
       frameData.joints[8] != null && frameData.joints[8].visibility > 0.5
         ? frameData.joints[8]

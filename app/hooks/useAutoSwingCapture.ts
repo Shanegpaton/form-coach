@@ -84,6 +84,8 @@ export function toKeypoints(frameData: FrameData): Keypoints {
 
   return {
     timestamp: frameData.timestamp,
+    sourceWidth: frameData.sourceWidth,
+    sourceHeight: frameData.sourceHeight,
     rightEar: joint(8),
     leftShoulder: joint(11),
     rightShoulder: joint(12),

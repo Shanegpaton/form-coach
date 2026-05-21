@@ -15,6 +15,8 @@ type JointCoordinate = {
 export type FrameData = {
   timestamp: number;
   joints: JointCoordinate[];
+  sourceWidth?: number;
+  sourceHeight?: number;
 };
 
 const TARGET_POSE_FPS = 30;
@@ -105,7 +107,12 @@ export function usePoseDetection(
           z: joint.z,
           visibility: joint.visibility,
         }));
-        setFrameData({ timestamp, joints });
+        setFrameData({
+          timestamp,
+          joints,
+          sourceWidth: video.videoWidth || undefined,
+          sourceHeight: video.videoHeight || undefined,
+        });
         return true;
       } catch (error) {
         detectionErrorCountRef.current += 1;

@@ -13,6 +13,7 @@ import { CoachMarkdown } from './CoachMarkdown';
 import { SwingReplayComparison } from './SwingReplayComparison';
 
 type PoseColors = { landmark: string; connector: string };
+type VideoSize = { width: number; height: number };
 
 function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
   if (status === 'armed_waiting_still' && !fullBodyFramed) {
@@ -61,6 +62,7 @@ export default function CameraStream() {
   const [cameraStartPending, setCameraStartPending] = useState(false);
   const [swingVideoUrl, setSwingVideoUrl] = useState<string | null>(null);
   const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
+  const [swingVideoSize, setSwingVideoSize] = useState<VideoSize | null>(null);
 
   const statusMessage = useMemo(() => {
     if (status === 'idle') {
@@ -145,6 +147,12 @@ export default function CameraStream() {
   useEffect(() => {
     if (status === 'completed' && recordedFrames.length > 0) {
       const metrics = calculateSwingMetrics(recordedFrames);
+      const video = videoRef.current;
+      setSwingVideoSize(
+        video && video.videoWidth > 0 && video.videoHeight > 0
+          ? { width: video.videoWidth, height: video.videoHeight }
+          : null,
+      );
       setLastSwing(metrics ?? null);
       setCoachText('');
       setCoachError(null);
@@ -318,6 +326,7 @@ export default function CameraStream() {
           return null;
         });
         setSwingVideoClipStartSeconds(0);
+        setSwingVideoSize(null);
         await startCamera();
         arm();
       } catch {
@@ -447,6 +456,7 @@ export default function CameraStream() {
           frames={recordedFrames}
           swingVideoUrl={swingVideoUrl}
           swingVideoClipStartSeconds={swingVideoClipStartSeconds}
+          swingVideoSize={swingVideoSize}
         />
       ) : null}
 
