@@ -9,6 +9,7 @@ const steps = [
   "Allow camera access when prompted.",
   "Set up the camera as above, then tap Arm recording and get into frame.",
   "Hold still, then swing once you turn green.",
+  "Replay your captured swing beside a professional driver reference and scrub frame by frame.",
   "Optional: run Coach with AI for written feedback on your last capture.",
 ];
 

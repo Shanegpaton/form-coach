@@ -212,6 +212,7 @@ export function usePoseDetection(
         },
         audio: false,
       });
+      console.log('[camera] video track settings', stream.getVideoTracks()[0]?.getSettings());
 
       const video = videoRef.current;
       if (!video) {

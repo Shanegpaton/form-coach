@@ -260,6 +260,13 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
             if (recordedRef.current.at(-1)?.timestamp !== kp.timestamp) {
               recordedRef.current.push(kp);
             }
+            console.log('[swing capture] motion confirmed with preroll', {
+              prerollFrames: prerollRef.current.length,
+              recordedFramesAtStart: recordedRef.current.length,
+              firstTimestamp: prerollRef.current[0]?.timestamp,
+              motionConfirmedAt: kp.timestamp,
+              prerollMs: kp.timestamp - (prerollRef.current[0]?.timestamp ?? kp.timestamp),
+            });
             recordStartTsRef.current = kp.timestamp;
             apexYRef.current = recordingHandY(kp);
             hasExitedApexRef.current = false;
