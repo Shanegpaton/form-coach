@@ -148,13 +148,15 @@ function drawSwingFrame(canvas: HTMLCanvasElement, frame: Keypoints | null) {
 }
 
 function setVideoTime(video: HTMLVideoElement | null, seconds: number) {
-  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-  video.currentTime = Math.max(0, Math.min(video.duration, seconds));
+  if (!video) return;
+  const upperBound = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null;
+  video.currentTime = Math.max(0, upperBound == null ? seconds : Math.min(upperBound, seconds));
 }
 
 function stepVideo(video: HTMLVideoElement | null, direction: -1 | 1, maxTime?: number) {
-  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return 0;
-  const upperBound = Number.isFinite(maxTime) && maxTime != null ? Math.min(video.duration, maxTime) : video.duration;
+  if (!video) return 0;
+  const durationBound = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Number.POSITIVE_INFINITY;
+  const upperBound = Number.isFinite(maxTime) && maxTime != null ? Math.min(durationBound, maxTime) : durationBound;
   const nextTime = Math.max(0, Math.min(upperBound, video.currentTime + VIDEO_STEP_SECONDS * direction));
   video.currentTime = nextTime;
   return nextTime;
@@ -187,6 +189,7 @@ export function SwingReplayComparison({
   const [isPosePlaying, setIsPosePlaying] = useState(false);
   const [userVideoTime, setUserVideoTime] = useState(0);
   const [userVideoDuration, setUserVideoDuration] = useState(0);
+  const [userVideoReadyKey, setUserVideoReadyKey] = useState<string | null>(null);
   const [isUserVideoPlaying, setIsUserVideoPlaying] = useState(false);
   const [userSpeed, setUserSpeed] = useState<ReplaySpeed>(0.5);
 
@@ -207,12 +210,14 @@ export function SwingReplayComparison({
 
   const activeUserVideo = effectiveUserMode === 'video' && swingVideoUrl != null;
   const userVideoClipStart = Math.max(0, swingVideoClipStartSeconds);
+  const userVideoClipKey = `${swingVideoUrl ?? 'none'}:${userVideoClipStart.toFixed(3)}`;
   const userVideoAvailableDuration =
     userVideoDuration > userVideoClipStart ? userVideoDuration - userVideoClipStart : 0;
   const userVideoReplayDuration = cappedUserVideoDuration(
     userVideoAvailableDuration,
     poseDurationSeconds,
   );
+  const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
   const userScrubMax = activeUserVideo ? Math.max(userVideoReplayDuration, 0) : Math.max(0, frameCount - 1);
   const userScrubValue = activeUserVideo ? userVideoTime : currentIndex;
 
@@ -320,6 +325,10 @@ export function SwingReplayComparison({
         video.currentTime = userVideoClipStart;
         setUserVideoTime(0);
       }
+      if (!userVideoReadyAtClipStart) {
+        setVideoTime(video, userVideoClipStart);
+        return;
+      }
       setIsPosePlaying(false);
       setIsUserVideoPlaying((playing) => !playing);
       return;
@@ -370,9 +379,9 @@ export function SwingReplayComparison({
         </label>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="grid gap-3">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-3">
             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your swing</h4>
             <div className="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
               <button
@@ -409,39 +418,62 @@ export function SwingReplayComparison({
 
           <figure className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
             {activeUserVideo ? (
-              <video
-                ref={userVideoRef}
-                key={swingVideoUrl}
-                src={swingVideoUrl}
-                muted
-                playsInline
-                preload="metadata"
-                className="block aspect-video w-full bg-zinc-950 object-contain"
-                onLoadedMetadata={(event) => {
-                  setUserVideoDuration(event.currentTarget.duration);
-                  setVideoTime(event.currentTarget, userVideoClipStart + userVideoTime);
-                }}
-                onTimeUpdate={(event) => {
-                  const video = event.currentTarget;
-                  const clipEnd = userVideoClipStart + userVideoReplayDuration;
-                  if (video.currentTime < userVideoClipStart) {
-                    video.currentTime = userVideoClipStart;
-                    setUserVideoTime(0);
-                    return;
-                  }
-                  const nextTime = Math.min(
-                    Math.max(0, video.currentTime - userVideoClipStart),
-                    userVideoReplayDuration || video.currentTime,
-                  );
-                  if (userVideoReplayDuration > 0 && video.currentTime >= clipEnd) {
-                    video.pause();
-                    video.currentTime = clipEnd;
-                    setIsUserVideoPlaying(false);
-                  }
-                  setUserVideoTime(nextTime);
-                }}
-                onEnded={() => setIsUserVideoPlaying(false)}
-              />
+              <div className="relative aspect-video bg-zinc-950">
+                <video
+                  ref={userVideoRef}
+                  key={userVideoClipKey}
+                  src={swingVideoUrl}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className={`absolute inset-0 h-full w-full bg-zinc-950 object-contain ${
+                    userVideoReadyAtClipStart ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  onLoadedMetadata={(event) => {
+                    const video = event.currentTarget;
+                    const targetTime = userVideoClipStart + userVideoTime;
+                    setUserVideoReadyKey(null);
+                    setUserVideoDuration(video.duration);
+                    setVideoTime(video, targetTime);
+                    if (Math.abs(video.currentTime - targetTime) < 0.02) {
+                      setUserVideoReadyKey(userVideoClipKey);
+                    }
+                  }}
+                  onSeeked={(event) => {
+                    if (event.currentTarget.currentTime >= userVideoClipStart - 0.02) {
+                      setUserVideoReadyKey(userVideoClipKey);
+                    }
+                  }}
+                  onTimeUpdate={(event) => {
+                    const video = event.currentTarget;
+                    const clipEnd = userVideoClipStart + userVideoReplayDuration;
+                    if (!userVideoReadyAtClipStart && video.currentTime >= userVideoClipStart - 0.02) {
+                      setUserVideoReadyKey(userVideoClipKey);
+                    }
+                    if (video.currentTime < userVideoClipStart) {
+                      video.currentTime = userVideoClipStart;
+                      setUserVideoTime(0);
+                      return;
+                    }
+                    const nextTime = Math.min(
+                      Math.max(0, video.currentTime - userVideoClipStart),
+                      userVideoReplayDuration || video.currentTime,
+                    );
+                    if (userVideoReplayDuration > 0 && video.currentTime >= clipEnd) {
+                      video.pause();
+                      video.currentTime = clipEnd;
+                      setIsUserVideoPlaying(false);
+                    }
+                    setUserVideoTime(nextTime);
+                  }}
+                  onEnded={() => setIsUserVideoPlaying(false)}
+                />
+                {!userVideoReadyAtClipStart ? (
+                  <div className="absolute inset-0 grid place-items-center bg-zinc-950 text-sm text-zinc-300">
+                    Preparing swing frame…
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <canvas ref={canvasRef} className="block aspect-video w-full" />
             )}
@@ -457,7 +489,11 @@ export function SwingReplayComparison({
               max={userScrubMax}
               step={activeUserVideo ? VIDEO_STEP_SECONDS : 1}
               value={userScrubValue}
-              disabled={activeUserVideo ? userVideoReplayDuration <= 0 : frameCount <= 1}
+              disabled={
+                activeUserVideo
+                  ? userVideoReplayDuration <= 0 || !userVideoReadyAtClipStart
+                  : frameCount <= 1
+              }
               aria-label="Your swing replay position"
               onChange={(event) => {
                 const nextValue = Number(event.target.value);
@@ -473,20 +509,25 @@ export function SwingReplayComparison({
               className="w-full accent-zinc-900 disabled:opacity-50 dark:accent-zinc-100"
             />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  className="min-h-10 rounded-lg border border-zinc-300 px-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-3 sm:text-sm"
                   disabled={activeUserVideo ? userVideoTime <= 0 : frameCount <= 1 || currentIndex === 0}
                   onClick={() => stepUser(-1)}
+                  aria-label="Previous frame"
                 >
-                  Previous frame
+                  ‹
                 </button>
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  disabled={activeUserVideo ? userVideoReplayDuration <= 0 : frameCount <= 1}
+                  className="min-h-10 rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:px-4 sm:text-sm"
+                  disabled={
+                    activeUserVideo
+                      ? userVideoReplayDuration <= 0 || !userVideoReadyAtClipStart
+                      : frameCount <= 1
+                  }
                   onClick={toggleUserPlay}
                 >
                   {activeUserVideo
@@ -499,37 +540,37 @@ export function SwingReplayComparison({
                 </button>
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  className="min-h-10 rounded-lg border border-zinc-300 px-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-3 sm:text-sm"
                   disabled={
                     activeUserVideo
                       ? userVideoReplayDuration <= 0 || userVideoTime >= userVideoReplayDuration
+                        || !userVideoReadyAtClipStart
                       : frameCount <= 1 || currentIndex === frameCount - 1
                   }
                   onClick={() => stepUser(1)}
+                  aria-label="Next frame"
                 >
-                  Next frame
+                  ›
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 xl:justify-end">
                 <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Speed
                 </span>
-                {SPEED_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`min-h-9 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                      userSpeed === option
-                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-                        : 'border-zinc-300 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800'
-                    }`}
-                    onClick={() => setUserSpeed(option)}
-                  >
-                    {option}x
-                  </button>
-                ))}
-              </div>
+                <select
+                  value={userSpeed}
+                  onChange={(event) => setUserSpeed(Number(event.target.value) as ReplaySpeed)}
+                  className="min-h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  aria-label="Your replay speed"
+                >
+                  {SPEED_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}x
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="flex flex-wrap justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -550,8 +591,10 @@ export function SwingReplayComparison({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pro reference</h4>
+        <div className="grid gap-3">
+          <div className="flex min-h-12 items-center">
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pro reference</h4>
+          </div>
           <figure className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
             <video
               ref={proVideoRef}
@@ -591,19 +634,20 @@ export function SwingReplayComparison({
               className="w-full accent-zinc-900 disabled:opacity-50 dark:accent-zinc-100"
             />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  className="min-h-10 rounded-lg border border-zinc-300 px-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-3 sm:text-sm"
                   disabled={proTime <= 0}
                   onClick={() => stepPro(-1)}
+                  aria-label="Previous professional frame"
                 >
-                  Previous frame
+                  ‹
                 </button>
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="min-h-10 rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:px-4 sm:text-sm"
                   disabled={proDuration <= 0}
                   onClick={() => {
                     const video = proVideoRef.current;
@@ -618,33 +662,32 @@ export function SwingReplayComparison({
                 </button>
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  className="min-h-10 rounded-lg border border-zinc-300 px-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-3 sm:text-sm"
                   disabled={proDuration <= 0 || proTime >= proDuration}
                   onClick={() => stepPro(1)}
+                  aria-label="Next professional frame"
                 >
-                  Next frame
+                  ›
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 xl:justify-end">
                 <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Speed
                 </span>
-                {SPEED_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`min-h-9 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                      proSpeed === option
-                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-                        : 'border-zinc-300 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800'
-                    }`}
-                    onClick={() => setProSpeed(option)}
-                  >
-                    {option}x
-                  </button>
-                ))}
-              </div>
+                <select
+                  value={proSpeed}
+                  onChange={(event) => setProSpeed(Number(event.target.value) as ReplaySpeed)}
+                  className="min-h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  aria-label="Professional replay speed"
+                >
+                  {SPEED_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}x
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="flex flex-wrap justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">

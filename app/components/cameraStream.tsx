@@ -8,8 +8,7 @@ import {
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { calculateSwingMetrics, type SwingAnalysis } from '../lib/swing/calculateSwingMetrics';
 import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
-import type { Joint, Keypoints } from '../hooks/useSwingRecorder';
-import { DRIVER_BENCHMARK_VIDEO_URLS } from '../lib/swing/driverBenchmarkVideos';
+import type { Keypoints } from '../hooks/useSwingRecorder';
 import { CoachMarkdown } from './CoachMarkdown';
 import { SwingReplayComparison } from './SwingReplayComparison';
 
@@ -36,45 +35,6 @@ function preferredRecordingMimeType(): string | undefined {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type));
 }
 
-function joint(x: number, y: number): Joint {
-  return { x, y, z: 0, visibility: 1 };
-}
-
-function createTestSwingFrames(): Keypoints[] {
-  const frames: Keypoints[] = [];
-  const frameCount = 54;
-  const durationMs = 1800;
-
-  for (let i = 0; i < frameCount; i += 1) {
-    const t = i / (frameCount - 1);
-    const backswing = Math.sin(Math.min(t / 0.45, 1) * Math.PI * 0.5);
-    const throughSwing = Math.sin(Math.max(0, (t - 0.45) / 0.55) * Math.PI * 0.5);
-    const handX = 0.54 - backswing * 0.2 + throughSwing * 0.28;
-    const handY = 0.36 - backswing * 0.18 + throughSwing * 0.18;
-    const shoulderTilt = (backswing - throughSwing * 0.5) * 0.04;
-    const hipShift = throughSwing * 0.05;
-
-    frames.push({
-      timestamp: i * (durationMs / (frameCount - 1)),
-      rightEar: joint(0.48 + hipShift * 0.25, 0.2),
-      leftShoulder: joint(0.42 + hipShift, 0.36 + shoulderTilt),
-      rightShoulder: joint(0.56 + hipShift, 0.38 - shoulderTilt),
-      leftElbow: joint((0.42 + handX) / 2, (0.42 + handY) / 2),
-      rightElbow: joint((0.56 + handX) / 2, (0.42 + handY) / 2),
-      leftWrist: joint(handX, handY),
-      rightWrist: joint(handX + 0.04, handY + 0.015),
-      leftHip: joint(0.43 + hipShift, 0.58),
-      rightHip: joint(0.55 + hipShift, 0.58),
-      leftKnee: joint(0.43 + hipShift * 0.7, 0.76),
-      rightKnee: joint(0.55 + hipShift * 0.7, 0.76),
-      leftAnkle: joint(0.42, 0.93),
-      rightAnkle: joint(0.56, 0.93),
-    });
-  }
-
-  return frames;
-}
-
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -82,7 +42,6 @@ export default function CameraStream() {
   const swingVideoChunksRef = useRef<BlobPart[]>([]);
   const keepSwingVideoOnStopRef = useRef(false);
   const swingVideoUrlRef = useRef<string | null>(null);
-  const latestPoseTimestampRef = useRef<number | null>(null);
   const videoRecordingStartTimestampRef = useRef<number | null>(null);
   const swingVideoClipStartSecondsRef = useRef(0);
   const recordedFramesRef = useRef<Keypoints[]>([]);
@@ -102,9 +61,6 @@ export default function CameraStream() {
   const [cameraStartPending, setCameraStartPending] = useState(false);
   const [swingVideoUrl, setSwingVideoUrl] = useState<string | null>(null);
   const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
-  const [testReplayFrames, setTestReplayFrames] = useState<Keypoints[] | null>(null);
-
-  const replayFrames = testReplayFrames ?? recordedFrames;
 
   const statusMessage = useMemo(() => {
     if (status === 'idle') {
@@ -150,12 +106,6 @@ export default function CameraStream() {
   }, [status, fullBodyFramed, recordedFrames.length]);
 
   useEffect(() => {
-    if (frameData) {
-      latestPoseTimestampRef.current = frameData.timestamp;
-    }
-  }, [frameData]);
-
-  useEffect(() => {
     recordedFramesRef.current = recordedFrames;
   }, [recordedFrames]);
 
@@ -195,7 +145,6 @@ export default function CameraStream() {
   useEffect(() => {
     if (status === 'completed' && recordedFrames.length > 0) {
       const metrics = calculateSwingMetrics(recordedFrames);
-      setTestReplayFrames(null);
       setLastSwing(metrics ?? null);
       setCoachText('');
       setCoachError(null);
@@ -232,13 +181,21 @@ export default function CameraStream() {
     if (swingRecorderRef.current) return;
 
     const stream = videoRef.current?.srcObject;
-    if (!(stream instanceof MediaStream) || !window.MediaRecorder) return;
+    const video = videoRef.current;
+    const recordingStartTimestamp =
+      frameData?.timestamp ??
+      (video && Number.isFinite(video.currentTime) && video.currentTime > 0
+        ? video.currentTime * 1000
+        : null);
+    if (!(stream instanceof MediaStream) || !window.MediaRecorder || recordingStartTimestamp == null) {
+      return;
+    }
 
     try {
       const mimeType = preferredRecordingMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       swingVideoChunksRef.current = [];
-      videoRecordingStartTimestampRef.current = latestPoseTimestampRef.current;
+      videoRecordingStartTimestampRef.current = recordingStartTimestamp;
       keepSwingVideoOnStopRef.current = false;
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -266,7 +223,7 @@ export default function CameraStream() {
       swingRecorderRef.current = null;
       swingVideoChunksRef.current = [];
     }
-  }, [status]);
+  }, [status, frameData?.timestamp]);
 
   useEffect(() => {
     return () => {
@@ -361,7 +318,6 @@ export default function CameraStream() {
           return null;
         });
         setSwingVideoClipStartSeconds(0);
-        setTestReplayFrames(null);
         await startCamera();
         arm();
       } catch {
@@ -370,21 +326,6 @@ export default function CameraStream() {
         setCameraStartPending(false);
       }
     })();
-  }
-
-  function loadTestReplay() {
-    const frames = createTestSwingFrames();
-    setTestReplayFrames(frames);
-    setLastSwing(calculateSwingMetrics(frames));
-    setCoachText('');
-    setCoachError(null);
-    setCoachConsumedForCapture(false);
-    setSwingVideoUrl((previousUrl) => {
-      if (previousUrl?.startsWith('blob:')) URL.revokeObjectURL(previousUrl);
-      swingVideoUrlRef.current = null;
-      return DRIVER_BENCHMARK_VIDEO_URLS[3];
-    });
-    setSwingVideoClipStartSeconds(0);
   }
 
   const durationSec =
@@ -473,13 +414,6 @@ export default function CameraStream() {
                 : 'Coach with AI'}
           </button>
         ) : null}
-        <button
-          type="button"
-          className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
-          onClick={loadTestReplay}
-        >
-          Load test replay
-        </button>
       </div>
 
       {lastSwing ? (
@@ -509,8 +443,8 @@ export default function CameraStream() {
 
       {lastSwing ? (
         <SwingReplayComparison
-          key={replayFrames[0]?.timestamp ?? 'last-swing'}
-          frames={replayFrames}
+          key={recordedFrames[0]?.timestamp ?? 'last-swing'}
+          frames={recordedFrames}
           swingVideoUrl={swingVideoUrl}
           swingVideoClipStartSeconds={swingVideoClipStartSeconds}
         />
