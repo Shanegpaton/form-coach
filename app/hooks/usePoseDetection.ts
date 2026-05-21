@@ -51,6 +51,8 @@ export function usePoseDetection(
   const detectorRef = useRef<PoseLandmarker | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameIdRef = useRef(0);
+  const videoFrameCallbackIdRef = useRef(0);
+  const lastVideoTimestampMsRef = useRef<number | null>(null);
   const detectingRef = useRef(false);
   const startingRef = useRef(false);
 
@@ -67,27 +69,66 @@ export function usePoseDetection(
       cancelAnimationFrame(animationFrameIdRef.current);
       animationFrameIdRef.current = 0;
     }
-  }, []);
+    const video = videoRef.current;
+    if (videoFrameCallbackIdRef.current && video?.cancelVideoFrameCallback) {
+      video.cancelVideoFrameCallback(videoFrameCallbackIdRef.current);
+      videoFrameCallbackIdRef.current = 0;
+    }
+    lastVideoTimestampMsRef.current = null;
+  }, [videoRef]);
+
+  const detectCurrentVideoFrame = useCallback(
+    (timestamp: number) => {
+      const video = videoRef.current;
+      const detector = detectorRef.current;
+      if (!video || !detector) return false;
+
+      const lastTimestamp = lastVideoTimestampMsRef.current;
+      if (lastTimestamp != null && timestamp <= lastTimestamp + 0.001) {
+        return false;
+      }
+      lastVideoTimestampMsRef.current = timestamp;
+
+      const result = detector.detectForVideo(video, timestamp);
+      setLandmarks(result.landmarks ?? []);
+      const firstPose = result.landmarks?.[0] ?? [];
+      const joints = firstPose.map((joint) => ({
+        x: joint.x,
+        y: joint.y,
+        z: joint.z,
+        visibility: joint.visibility,
+      }));
+      setFrameData({ timestamp, joints });
+      return true;
+    },
+    [videoRef],
+  );
+
+  const scheduleVideoFrameDetection = useCallback(() => {
+    const video = videoRef.current;
+    if (!detectingRef.current || !video) return;
+
+    if (video.requestVideoFrameCallback) {
+      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((_now, metadata) => {
+        if (!detectingRef.current) return;
+        detectCurrentVideoFrame(metadata.mediaTime * 1000);
+        scheduleVideoFrameDetection();
+      });
+      return;
+    }
+
+    animationFrameIdRef.current = requestAnimationFrame(() => {
+      if (!detectingRef.current) return;
+      const fallbackTimestamp = video.currentTime > 0 ? video.currentTime * 1000 : performance.now();
+      detectCurrentVideoFrame(fallbackTimestamp);
+      scheduleVideoFrameDetection();
+    });
+  }, [detectCurrentVideoFrame, videoRef]);
 
   const detectFrame = useCallback(() => {
     if (!detectingRef.current) return;
-    const video = videoRef.current;
-    const detector = detectorRef.current;
-    if (!video || !detector) return;
-
-    const timestamp = performance.now();
-    const result = detector.detectForVideo(video, timestamp);
-    setLandmarks(result.landmarks ?? []);
-    const firstPose = result.landmarks?.[0] ?? [];
-    const joints = firstPose.map((joint) => ({
-      x: joint.x,
-      y: joint.y,
-      z: joint.z,
-      visibility: joint.visibility,
-    }));
-    setFrameData({ timestamp, joints });
-    animationFrameIdRef.current = requestAnimationFrame(detectFrame);
-  }, [videoRef]);
+    scheduleVideoFrameDetection();
+  }, [scheduleVideoFrameDetection]);
 
   useEffect(() => {
     let isMounted = true;
@@ -167,6 +208,7 @@ export function usePoseDetection(
           facingMode: { ideal: 'user' },
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          frameRate: { ideal: 60 },
         },
         audio: false,
       });
@@ -209,7 +251,7 @@ export function usePoseDetection(
       setHasCamera(true);
       detectingRef.current = true;
       setIsReady(true);
-      animationFrameIdRef.current = requestAnimationFrame(detectFrame);
+      detectFrame();
     } catch (error) {
       const msg = humanMediaError(error);
       setCameraError(msg);
