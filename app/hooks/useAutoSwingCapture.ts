@@ -25,7 +25,9 @@ type UseAutoSwingCaptureResult = {
 const STILLNESS_WINDOW_MS = 1000;
 const STILL_SPEED_THRESHOLD = 0.00009; // normalized units per ms
 const MOTION_SPEED_THRESHOLD = 0.0002; // normalized units per ms
-const MOTION_CONFIRM_FRAMES = 5;
+const MOTION_CONFIRM_FRAMES = 3;
+/** Keep real pose samples from just before motion confirmation so fast downswings are not clipped. */
+const PREROLL_WINDOW_MS = 900;
 const RISE_CONFIRM_FRAMES = 3;
 const MIN_RECORDING_MS = 50;
 /** After the lowest point, if hands stop getting "deeper" on screen this long, end (follow-through often hides wrists—2D y never "rises"). */
@@ -124,6 +126,13 @@ function speedBetween(prev: { t: number; p: Point2D }, curr: { t: number; p: Poi
   return d / dt;
 }
 
+function rememberPrerollFrame(buffer: Keypoints[], kp: Keypoints): Keypoints[] {
+  const startTs = kp.timestamp - PREROLL_WINDOW_MS;
+  const trimmed = buffer.filter((frame) => frame.timestamp >= startTs && frame.timestamp < kp.timestamp);
+  trimmed.push(kp);
+  return trimmed;
+}
+
 /**
  * Single screen-y for hand height during recording: average of visible wrists, else lead-side elbow fallback.
  * When hands pass behind the torso, one wrist often drops out or 2D y stalls—averaging + elbow helps; plateau stop handles the rest.
@@ -156,8 +165,10 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
   const isRecording = status === 'recording';
 
   const recordedRef = useRef<Keypoints[]>([]);
+  const prerollRef = useRef<Keypoints[]>([]);
   const lastMotionSampleRef = useRef<{ t: number; p: Point2D } | null>(null);
   const latestKeypointsRef = useRef<Keypoints | null>(null);
+  const lastProcessedTimestampRef = useRef<number | null>(null);
   const fullBodyFramedRef = useRef(true);
 
   const stillStartRef = useRef<number | null>(null);
@@ -189,6 +200,11 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
         rafId = requestAnimationFrame(tick);
         return;
       }
+      if (lastProcessedTimestampRef.current === kp.timestamp) {
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+      lastProcessedTimestampRef.current = kp.timestamp;
 
       const mp = motionPoint(kp);
       if (!mp) {
@@ -211,9 +227,11 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
         if (!framed) {
           stillStartRef.current = null;
           lastMotionSampleRef.current = null;
+          prerollRef.current = [];
           rafId = requestAnimationFrame(tick);
           return;
         }
+        prerollRef.current = rememberPrerollFrame(prerollRef.current, kp);
 
         if (speed != null) {
           const isStillNow = speed < STILL_SPEED_THRESHOLD;
@@ -233,18 +251,28 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
       }
 
       if (status === 'armed_waiting_motion') {
+        prerollRef.current = rememberPrerollFrame(prerollRef.current, kp);
         if (speed != null) {
           const isMoving = speed > MOTION_SPEED_THRESHOLD;
           motionConfirmRef.current = isMoving ? motionConfirmRef.current + 1 : 0;
           if (motionConfirmRef.current >= MOTION_CONFIRM_FRAMES) {
-            recordedRef.current = [];
+            recordedRef.current = prerollRef.current.slice();
+            if (recordedRef.current.at(-1)?.timestamp !== kp.timestamp) {
+              recordedRef.current.push(kp);
+            }
+            console.log('[swing capture] motion confirmed with preroll', {
+              prerollFrames: prerollRef.current.length,
+              recordedFramesAtStart: recordedRef.current.length,
+              firstTimestamp: prerollRef.current[0]?.timestamp,
+              motionConfirmedAt: kp.timestamp,
+              prerollMs: kp.timestamp - (prerollRef.current[0]?.timestamp ?? kp.timestamp),
+            });
             recordStartTsRef.current = kp.timestamp;
             apexYRef.current = recordingHandY(kp);
             hasExitedApexRef.current = false;
             deepYRef.current = null;
             riseConfirmRef.current = 0;
             lastDeepGrowthTsRef.current = null;
-            recordedRef.current.push(kp);
             setStatus('recording');
             rafId = requestAnimationFrame(tick);
             return;
@@ -332,10 +360,12 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
 
   const arm = useCallback(() => {
     recordedRef.current = [];
+    prerollRef.current = [];
     setRecordedFrames([]);
     fullBodyFramedRef.current = true;
     setFullBodyFramed(true);
     lastMotionSampleRef.current = null;
+    lastProcessedTimestampRef.current = null;
     stillStartRef.current = null;
     motionConfirmRef.current = 0;
     recordStartTsRef.current = null;
@@ -349,10 +379,12 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
 
   const cancel = useCallback(() => {
     recordedRef.current = [];
+    prerollRef.current = [];
     setRecordedFrames([]);
     fullBodyFramedRef.current = true;
     setFullBodyFramed(true);
     lastMotionSampleRef.current = null;
+    lastProcessedTimestampRef.current = null;
     stillStartRef.current = null;
     motionConfirmRef.current = 0;
     recordStartTsRef.current = null;
@@ -379,4 +411,3 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     reset,
   };
 }
-

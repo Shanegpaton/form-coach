@@ -8,7 +8,9 @@ import {
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { calculateSwingMetrics, type SwingAnalysis } from '../lib/swing/calculateSwingMetrics';
 import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
+import type { Keypoints } from '../hooks/useSwingRecorder';
 import { CoachMarkdown } from './CoachMarkdown';
+import { SwingReplayComparison } from './SwingReplayComparison';
 
 type PoseColors = { landmark: string; connector: string };
 
@@ -28,9 +30,21 @@ function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
 const btnFocus =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-zinc-200';
 
+function preferredRecordingMimeType(): string | undefined {
+  const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
 export default function CameraStream() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const swingRecorderRef = useRef<MediaRecorder | null>(null);
+  const swingVideoChunksRef = useRef<BlobPart[]>([]);
+  const keepSwingVideoOnStopRef = useRef(false);
+  const swingVideoUrlRef = useRef<string | null>(null);
+  const videoRecordingStartTimestampRef = useRef<number | null>(null);
+  const swingVideoClipStartSecondsRef = useRef(0);
+  const recordedFramesRef = useRef<Keypoints[]>([]);
   const { landmarks, frameData, startCamera, cameraError, hasCamera, isModelReady } =
     usePoseDetection(videoRef);
   const { status, isArmed, isRecording, fullBodyFramed, recordedFrames, arm, cancel } =
@@ -45,6 +59,8 @@ export default function CameraStream() {
   /** One coach run per capture; cleared when a new swing completes. */
   const [coachConsumedForCapture, setCoachConsumedForCapture] = useState(false);
   const [cameraStartPending, setCameraStartPending] = useState(false);
+  const [swingVideoUrl, setSwingVideoUrl] = useState<string | null>(null);
+  const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
 
   const statusMessage = useMemo(() => {
     if (status === 'idle') {
@@ -70,7 +86,7 @@ export default function CameraStream() {
     }
     if (status === 'completed') {
       return lastSwing
-        ? 'Swing captured. Review the summary below or ask the coach.'
+        ? 'Swing captured. Replay it beside a pro reference or ask the coach.'
         : 'Capture finished.';
     }
     return '';
@@ -88,6 +104,10 @@ export default function CameraStream() {
     }
     return null;
   }, [status, fullBodyFramed, recordedFrames.length]);
+
+  useEffect(() => {
+    recordedFramesRef.current = recordedFrames;
+  }, [recordedFrames]);
 
   useEffect(() => {
     const drawPose = (landmarksByPose: NormalizedLandmark[][], colors: PoseColors) => {
@@ -131,6 +151,93 @@ export default function CameraStream() {
       setCoachConsumedForCapture(false);
     }
   }, [status, recordedFrames]);
+
+  useEffect(() => {
+    const stopSwingVideoRecording = (keepVideo: boolean) => {
+      const recorder = swingRecorderRef.current;
+      keepSwingVideoOnStopRef.current = keepVideo;
+      if (keepVideo) {
+        const firstPoseTimestamp = recordedFramesRef.current[0]?.timestamp;
+        const recordingStartTimestamp = videoRecordingStartTimestampRef.current;
+        swingVideoClipStartSecondsRef.current =
+          firstPoseTimestamp != null && recordingStartTimestamp != null
+            ? Math.max(0, (firstPoseTimestamp - recordingStartTimestamp) / 1000)
+            : 0;
+      } else {
+        swingVideoClipStartSecondsRef.current = 0;
+      }
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      swingRecorderRef.current = null;
+    };
+
+    const shouldRecordVideo =
+      status === 'armed_waiting_still' || status === 'armed_waiting_motion' || status === 'recording';
+    if (!shouldRecordVideo) {
+      stopSwingVideoRecording(status === 'completed');
+      return;
+    }
+    if (swingRecorderRef.current) return;
+
+    const stream = videoRef.current?.srcObject;
+    const video = videoRef.current;
+    const recordingStartTimestamp =
+      frameData?.timestamp ??
+      (video && Number.isFinite(video.currentTime) && video.currentTime > 0
+        ? video.currentTime * 1000
+        : null);
+    if (!(stream instanceof MediaStream) || !window.MediaRecorder || recordingStartTimestamp == null) {
+      return;
+    }
+
+    try {
+      const mimeType = preferredRecordingMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      swingVideoChunksRef.current = [];
+      videoRecordingStartTimestampRef.current = recordingStartTimestamp;
+      keepSwingVideoOnStopRef.current = false;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          swingVideoChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onstop = () => {
+        if (keepSwingVideoOnStopRef.current && swingVideoChunksRef.current.length > 0) {
+          const blob = new Blob(swingVideoChunksRef.current, {
+            type: recorder.mimeType || 'video/webm',
+          });
+          const nextUrl = URL.createObjectURL(blob);
+          setSwingVideoUrl((previousUrl) => {
+            if (previousUrl) URL.revokeObjectURL(previousUrl);
+            swingVideoUrlRef.current = nextUrl;
+            return nextUrl;
+          });
+          setSwingVideoClipStartSeconds(swingVideoClipStartSecondsRef.current);
+        }
+        swingVideoChunksRef.current = [];
+      };
+      swingRecorderRef.current = recorder;
+      recorder.start(100);
+    } catch {
+      swingRecorderRef.current = null;
+      swingVideoChunksRef.current = [];
+    }
+  }, [status, frameData?.timestamp]);
+
+  useEffect(() => {
+    return () => {
+      const recorder = swingRecorderRef.current;
+      keepSwingVideoOnStopRef.current = false;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      if (swingVideoUrlRef.current) {
+        URL.revokeObjectURL(swingVideoUrlRef.current);
+        swingVideoUrlRef.current = null;
+      }
+    };
+  }, []);
 
   async function requestGeminiCoach() {
     if (!lastSwing || coachConsumedForCapture || coachLoading) return;
@@ -205,6 +312,12 @@ export default function CameraStream() {
       if (cameraStartPending || !isModelReady) return;
       try {
         setCameraStartPending(true);
+        setSwingVideoUrl((previousUrl) => {
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          swingVideoUrlRef.current = null;
+          return null;
+        });
+        setSwingVideoClipStartSeconds(0);
         await startCamera();
         arm();
       } catch {
@@ -326,6 +439,15 @@ export default function CameraStream() {
             ) : null}
           </dl>
         </section>
+      ) : null}
+
+      {lastSwing ? (
+        <SwingReplayComparison
+          key={recordedFrames[0]?.timestamp ?? 'last-swing'}
+          frames={recordedFrames}
+          swingVideoUrl={swingVideoUrl}
+          swingVideoClipStartSeconds={swingVideoClipStartSeconds}
+        />
       ) : null}
 
       {coachError ? (
