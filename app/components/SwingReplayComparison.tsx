@@ -258,6 +258,7 @@ export function SwingReplayComparison({
   const impactVideoSeconds = impactPoseSeconds;
 
   const activeUserVideo = effectiveUserMode === 'video' && swingVideoUrl != null;
+  const showPoseCues = !activeUserVideo;
   const userVideoClipStart = Math.max(0, swingVideoClipStartSeconds);
   const userVideoClipKey = `${swingVideoUrl ?? 'none'}:${userVideoClipStart.toFixed(3)}`;
   const userVideoAvailableDuration =
@@ -269,24 +270,21 @@ export function SwingReplayComparison({
   const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
   const userScrubMax = activeUserVideo ? Math.max(userVideoReplayDuration, 0) : Math.max(0, frameCount - 1);
   const userScrubValue = activeUserVideo ? userVideoTime : currentIndex;
-  const startScrubPercent = userScrubMax > 0 ? 0 : null;
-  const topScrubValue = activeUserVideo ? topVideoSeconds : topFrameIndex;
+  const startScrubPercent = showPoseCues && userScrubMax > 0 ? 0 : null;
+  const topScrubValue = showPoseCues ? topFrameIndex : null;
   const topScrubPercent =
     topScrubValue != null && userScrubMax > 0
       ? Math.max(0, Math.min(100, (topScrubValue / userScrubMax) * 100))
       : null;
-  const impactScrubValue = activeUserVideo ? impactVideoSeconds : impactFrameIndex;
+  const impactScrubValue = showPoseCues ? impactFrameIndex : null;
   const impactScrubPercent =
     impactScrubValue != null && userScrubMax > 0
       ? Math.max(0, Math.min(100, (impactScrubValue / userScrubMax) * 100))
       : null;
   const showingImpact =
-    impactFrameIndex != null &&
-    (activeUserVideo
-      ? impactVideoSeconds != null && Math.abs(userVideoTime - impactVideoSeconds) <= VIDEO_STEP_SECONDS * 1.5
-      : currentIndex === impactFrameIndex);
+    showPoseCues && impactFrameIndex != null && currentIndex === impactFrameIndex;
   const currentSegment = (() => {
-    const t = activeUserVideo ? userVideoTime : poseElapsedSeconds;
+    const t = poseElapsedSeconds;
     if (topPoseSeconds != null && t < topPoseSeconds) return 'Backswing / takeaway';
     if (impactPoseSeconds != null && t <= impactPoseSeconds) return 'Downswing';
     return 'Follow-through';
@@ -436,7 +434,16 @@ export function SwingReplayComparison({
         return;
       }
       setIsPosePlaying(false);
-      setIsUserVideoPlaying((playing) => !playing);
+      if (isUserVideoPlaying) {
+        video?.pause();
+        setIsUserVideoPlaying(false);
+        return;
+      }
+      if (!video) return;
+      video.playbackRate = userSpeed;
+      setIsUserVideoPlaying(true);
+      const playResult = video.play();
+      if (playResult) playResult.catch(() => setIsUserVideoPlaying(false));
       return;
     }
     if (poseProgress >= 1) setPoseScrubProgress(0);
@@ -491,9 +498,11 @@ export function SwingReplayComparison({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your swing</h4>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${currentPhaseClassName}`}>
-                  {currentPhaseLabel}
-                </span>
+                {showPoseCues ? (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${currentPhaseClassName}`}>
+                    {currentPhaseLabel}
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
@@ -645,7 +654,7 @@ export function SwingReplayComparison({
                   />
                 ) : null}
               </div>
-              {impactFrameIndex != null ? (
+              {showPoseCues && impactFrameIndex != null ? (
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                   <span>
                     Green = start, blue = top/downswing start, amber = impact/end of downswing.
@@ -740,7 +749,7 @@ export function SwingReplayComparison({
               {activeUserVideo ? (
                 <>
                   <span>{formatTime(userVideoTime)} / {formatTime(userVideoReplayDuration)}</span>
-                  <span>Frame step uses 1/30s increments</span>
+                  <span>Step controls use 1/30s increments</span>
                 </>
               ) : (
                 <>

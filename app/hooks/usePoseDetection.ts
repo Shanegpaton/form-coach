@@ -21,6 +21,7 @@ export type FrameData = {
 
 const TARGET_POSE_FPS = 60;
 const MIN_POSE_INTERVAL_MS = 1000 / TARGET_POSE_FPS;
+const POSE_INTERVAL_EPSILON_MS = 1;
 
 function humanMediaError(e: unknown): string {
   if (e instanceof DOMException) {
@@ -136,7 +137,10 @@ export function usePoseDetection(
         // preview advances. MediaPipe VIDEO mode only needs a steadily increasing timestamp.
         const frameTimestamp = now;
         const lastTimestamp = lastVideoTimestampMsRef.current;
-        if (lastTimestamp == null || frameTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+        if (
+          lastTimestamp == null ||
+          frameTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS - POSE_INTERVAL_EPSILON_MS
+        ) {
           detectCurrentVideoFrame(frameTimestamp);
         }
         scheduleVideoFrameDetection();
@@ -148,7 +152,10 @@ export function usePoseDetection(
       if (!detectingRef.current) return;
       const mediaTimestamp = performance.now();
       const lastTimestamp = lastVideoTimestampMsRef.current;
-      if (lastTimestamp == null || mediaTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+      if (
+        lastTimestamp == null ||
+        mediaTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS - POSE_INTERVAL_EPSILON_MS
+      ) {
         detectCurrentVideoFrame(mediaTimestamp);
       }
       scheduleVideoFrameDetection();
