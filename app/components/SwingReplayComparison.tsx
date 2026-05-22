@@ -63,6 +63,19 @@ function frameIndexForProgress(frameCount: number, progress: number): number {
   return Math.max(0, Math.min(frameCount - 1, Math.round(progress * (frameCount - 1))));
 }
 
+function medianFrameStepSeconds(frames: Keypoints[]): number | null {
+  const deltas = frames
+    .slice(1)
+    .map((frame, index) => frame.timestamp - frames[index].timestamp)
+    .filter((delta) => Number.isFinite(delta) && delta > 0)
+    .sort((a, b) => a - b);
+  if (deltas.length === 0) return null;
+  const middle = Math.floor(deltas.length / 2);
+  const medianMs =
+    deltas.length % 2 === 0 ? (deltas[middle - 1] + deltas[middle]) / 2 : deltas[middle];
+  return medianMs / 1000;
+}
+
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0.00s';
   return `${seconds.toFixed(2)}s`;
@@ -221,6 +234,7 @@ export function SwingReplayComparison({
     if (frames.length <= 1) return 0;
     return Math.max(0, frames[frames.length - 1].timestamp - frames[0].timestamp) / 1000;
   }, [frames]);
+  const poseFrameStepSeconds = useMemo(() => medianFrameStepSeconds(frames), [frames]);
   const poseElapsedSeconds = poseDurationSeconds * poseProgress;
   const topPoseSeconds =
     topTimeMs != null && Number.isFinite(topTimeMs) ? Math.max(0, topTimeMs / 1000) : null;
@@ -267,9 +281,21 @@ export function SwingReplayComparison({
     userVideoAvailableDuration,
     poseDurationSeconds,
   );
+  const userVideoStepSeconds = poseFrameStepSeconds ?? VIDEO_STEP_SECONDS;
+  const userVideoFrameCount =
+    userVideoReplayDuration > 0
+      ? Math.max(1, Math.round(userVideoReplayDuration / userVideoStepSeconds) + 1)
+      : 0;
+  const userVideoFrameIndex =
+    userVideoFrameCount > 0
+      ? Math.max(
+          0,
+          Math.min(userVideoFrameCount - 1, Math.round(userVideoTime / userVideoStepSeconds)),
+        )
+      : 0;
   const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
-  const userScrubMax = activeUserVideo ? Math.max(userVideoReplayDuration, 0) : Math.max(0, frameCount - 1);
-  const userScrubValue = activeUserVideo ? userVideoTime : currentIndex;
+  const userScrubMax = activeUserVideo ? Math.max(0, userVideoFrameCount - 1) : Math.max(0, frameCount - 1);
+  const userScrubValue = activeUserVideo ? userVideoFrameIndex : currentIndex;
   const startScrubPercent = showPoseCues && userScrubMax > 0 ? 0 : null;
   const topScrubValue = showPoseCues ? topFrameIndex : null;
   const topScrubPercent =
@@ -379,10 +405,12 @@ export function SwingReplayComparison({
   function stepUser(direction: -1 | 1) {
     pauseUserReplay();
     if (activeUserVideo) {
-      const nextTime = Math.max(
+      if (userVideoFrameCount <= 1) return;
+      const nextFrameIndex = Math.max(
         0,
-        Math.min(userVideoReplayDuration, userVideoTime + VIDEO_STEP_SECONDS * direction),
+        Math.min(userVideoFrameCount - 1, userVideoFrameIndex + direction),
       );
+      const nextTime = Math.min(userVideoReplayDuration, nextFrameIndex * userVideoStepSeconds);
       setVideoTime(userVideoRef.current, userVideoClipStart + nextTime);
       setUserVideoTime(nextTime);
       return;
@@ -611,7 +639,7 @@ export function SwingReplayComparison({
                   type="range"
                   min="0"
                   max={userScrubMax}
-                  step={activeUserVideo ? VIDEO_STEP_SECONDS : 1}
+                  step={1}
                   value={userScrubValue}
                   disabled={
                     activeUserVideo
@@ -623,7 +651,8 @@ export function SwingReplayComparison({
                     const nextValue = Number(event.target.value);
                     pauseUserReplay();
                     if (activeUserVideo) {
-                      const bounded = Math.max(0, Math.min(userVideoReplayDuration, nextValue));
+                      const boundedFrame = Math.max(0, Math.min(userVideoFrameCount - 1, nextValue));
+                      const bounded = Math.min(userVideoReplayDuration, boundedFrame * userVideoStepSeconds);
                       setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
                       setUserVideoTime(bounded);
                     } else {
@@ -748,8 +777,10 @@ export function SwingReplayComparison({
             <div className="flex flex-wrap justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
               {activeUserVideo ? (
                 <>
+                  <span>
+                    Frame {userVideoFrameCount > 0 ? userVideoFrameIndex + 1 : 0} of {userVideoFrameCount}
+                  </span>
                   <span>{formatTime(userVideoTime)} / {formatTime(userVideoReplayDuration)}</span>
-                  <span>Step controls use 1/30s increments</span>
                 </>
               ) : (
                 <>
