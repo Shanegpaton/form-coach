@@ -1,8 +1,11 @@
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import type { SwingAnalysis } from "../../../lib/swing/calculateSwingMetrics";
+import { isSwingClubId, type SwingClubId } from "../../../lib/swing/clubConfig";
 import driverProRanges from "../../../lib/swing/data/driverProRanges.json";
 import driverMetricImportance from "../../../lib/swing/data/driverMetricImportance.json";
+import sevenIronProRanges from "../../../lib/swing/data/sevenIronProRanges.json";
+import sevenIronMetricImportance from "../../../lib/swing/data/sevenIronMetricImportance.json";
 
 export const maxDuration = 60;
 
@@ -53,6 +56,19 @@ function stripIncomparableTimingFromProRanges(
   strip(out.numericRanges as Record<string, unknown>);
   strip(out.bands as Record<string, unknown>);
   return out;
+}
+
+function referenceForClub(club: SwingClubId) {
+  if (club === "sevenIron") {
+    return {
+      ranges: sevenIronProRanges as typeof driverProRanges,
+      metricConfig: sevenIronMetricImportance,
+    };
+  }
+  return {
+    ranges: driverProRanges,
+    metricConfig: driverMetricImportance,
+  };
 }
 
 const SYSTEM = `You are an expert golf coach reviewing computer-vision swing metrics from a single camera (2D pose from the back).
@@ -129,24 +145,27 @@ export async function POST(req: Request) {
   }
 
   const swing = body.swing as SwingAnalysis;
+  const club: SwingClubId = isSwingClubId(body.club) ? body.club : "driver";
+  const clubReference = referenceForClub(club);
   const ranges =
     body.ranges !== undefined && body.ranges !== null
       ? (body.ranges as typeof driverProRanges)
-      : driverProRanges;
+      : clubReference.ranges;
+  const metricConfig = clubReference.metricConfig;
 
   const rangesForCoach = stripIncomparableTimingFromProRanges(ranges);
   const numericKeys = Object.keys(rangesForCoach.numericRanges ?? {});
   const metricImportance = buildMetricImportanceForKeys(
     numericKeys,
-    driverMetricImportance.metricImportance as Record<string, number>,
+    metricConfig.metricImportance as Record<string, number>,
   );
   const metricNotes = buildMetricNotesForKeys(
     numericKeys,
-    driverMetricImportance.metricNotes as Record<string, string> | undefined,
+    metricConfig.metricNotes as Record<string, string> | undefined,
   );
 
   const coachReferencePayload = {
-    metricImportanceScale: driverMetricImportance.scale,
+    metricImportanceScale: metricConfig.scale,
     metricImportance,
     ...(metricNotes ? { metricNotes } : {}),
     referenceRanges: rangesForCoach,

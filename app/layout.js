@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Computer Vision Coaching",
   description:
-    "Record your driver swing with pose tracking and get structured feedback.",
+    "Record your driver or 7-iron swing with pose tracking and get structured feedback.",
 };
 
 export default function RootLayout({ children }) {

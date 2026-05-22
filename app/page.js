@@ -7,9 +7,10 @@ const cameraSetup = [
 
 const steps = [
   "Allow camera access when prompted.",
+  "Choose Driver or 7 iron for the swing you want to record.",
   "Set up the camera as above, then tap Arm recording and get into frame.",
   "Hold still, then swing once you turn green.",
-  "Replay your captured swing beside a professional driver reference and scrub frame by frame.",
+  "Replay your captured swing beside a matching professional reference and scrub frame by frame.",
   "Optional: run Coach with AI for written feedback on your last capture.",
 ];
 
@@ -21,7 +22,7 @@ export default function Home() {
           Computer vision coaching
         </h1>
         <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Use your webcam and pose tracking to capture a driver swing and review
+          Use your webcam and pose tracking to capture a driver or 7-iron swing and review
           what was measured. Results match the training data best when your camera
           matches the setup below.
         </p>
