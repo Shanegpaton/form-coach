@@ -26,16 +26,21 @@ const STILLNESS_WINDOW_MS = 1000;
 const STILL_SPEED_THRESHOLD = 0.00009; // normalized units per ms
 const MOTION_SPEED_THRESHOLD = 0.0002; // normalized units per ms
 const MOTION_CONFIRM_FRAMES = 3;
-/** Keep real pose samples from just before motion confirmation so fast downswings are not clipped. */
-const PREROLL_WINDOW_MS = 900;
-const RISE_CONFIRM_FRAMES = 3;
+/** Keep real pose samples from before motion confirmation so slow takeaways are not clipped. */
+const PREROLL_WINDOW_MS = 1100;
 const MIN_RECORDING_MS = 50;
 /** After the lowest point, if hands stop getting "deeper" on screen this long, end (follow-through often hides wrists—2D y never "rises"). */
 const POST_DEEP_PLATEAU_MS = 580;
 /** Do not plateau-stop until the clip is at least this long (avoids cutting off a paused or very slow downswing). */
 const MIN_RECORDING_BEFORE_PLATEAU_MS = 850;
+/** Keep a small amount of finish after the detected end of the downswing for replay. */
+const FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS = 600;
+/** Stop earlier if hands visibly rise high into the follow-through before the time buffer expires. */
+const FOLLOW_THROUGH_RISE_FROM_DEEP_Y = 0.14;
+/** Once hands have dropped from the top, keep only a bounded follow-through window. */
+const FOLLOW_THROUGH_AFTER_APEX_EXIT_MS = 1100;
 /** Hard cap so recording cannot run forever if heuristics miss. */
-const MAX_RECORDING_MS = 7000;
+const MAX_RECORDING_MS = 3800;
 /** In normalized coords, y grows downward. Min y = top of backswing; must drop this much before we treat "deep" + follow-through. */
 const DROP_FROM_APEX_Y = 0.055;
 /** Wrist moving up on screen (y decreasing) after deepest point of arc. */
@@ -181,9 +186,10 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
   const apexYRef = useRef<number | null>(null);
   /** True once wrist has moved down from apex enough (downswing has started). */
   const hasExitedApexRef = useRef(false);
+  const apexExitTsRef = useRef<number | null>(null);
   /** Largest y since exiting apex = hands lowest on screen (through impact). */
   const deepYRef = useRef<number | null>(null);
-  const riseConfirmRef = useRef<number>(0);
+  const downswingEndTsRef = useRef<number | null>(null);
   const lastDeepGrowthTsRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -272,8 +278,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
             recordStartTsRef.current = kp.timestamp;
             apexYRef.current = recordingHandY(kp);
             hasExitedApexRef.current = false;
+            apexExitTsRef.current = null;
             deepYRef.current = null;
-            riseConfirmRef.current = 0;
+            downswingEndTsRef.current = null;
             lastDeepGrowthTsRef.current = null;
             setStatus('recording');
             rafId = requestAnimationFrame(tick);
@@ -306,6 +313,7 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
               const apexNow = apexYRef.current;
               if (!hasExitedApexRef.current && apexNow != null && wy > apexNow + DROP_FROM_APEX_Y) {
                 hasExitedApexRef.current = true;
+                apexExitTsRef.current = kp.timestamp;
                 deepYRef.current = wy;
                 lastDeepGrowthTsRef.current = kp.timestamp;
               }
@@ -324,14 +332,45 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
                 }
 
                 const risingOnScreen = wy < deepNow - RISE_FROM_DEEP_EPS;
-                riseConfirmRef.current = risingOnScreen ? riseConfirmRef.current + 1 : 0;
-                if (riseConfirmRef.current >= RISE_CONFIRM_FRAMES) {
+                if (risingOnScreen && downswingEndTsRef.current == null) {
+                  downswingEndTsRef.current = kp.timestamp;
+                }
+
+                const downswingEndTs = downswingEndTsRef.current;
+                if (
+                  downswingEndTs != null &&
+                  (kp.timestamp - downswingEndTs >= FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS ||
+                    wy < deepNow - FOLLOW_THROUGH_RISE_FROM_DEEP_Y)
+                ) {
                   setRecordedFrames(recordedRef.current);
                   setStatus('completed');
                   return;
                 }
 
               }
+            } else if (hasExitedApexRef.current && downswingEndTsRef.current == null) {
+              downswingEndTsRef.current = kp.timestamp;
+            }
+
+            const downswingEndTs = downswingEndTsRef.current;
+            if (
+              downswingEndTs != null &&
+              kp.timestamp - downswingEndTs >= FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS
+            ) {
+              setRecordedFrames(recordedRef.current);
+              setStatus('completed');
+              return;
+            }
+
+            const apexExitTs = apexExitTsRef.current;
+            if (
+              hasExitedApexRef.current &&
+              apexExitTs != null &&
+              kp.timestamp - apexExitTs >= FOLLOW_THROUGH_AFTER_APEX_EXIT_MS
+            ) {
+              setRecordedFrames(recordedRef.current);
+              setStatus('completed');
+              return;
             }
 
             // End even when this frame has no wrist/elbow y (hands behind body): depth has plateaued long enough.
@@ -373,8 +412,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     recordStartTsRef.current = null;
     apexYRef.current = null;
     hasExitedApexRef.current = false;
+    apexExitTsRef.current = null;
     deepYRef.current = null;
-    riseConfirmRef.current = 0;
+    downswingEndTsRef.current = null;
     lastDeepGrowthTsRef.current = null;
     setStatus('armed_waiting_still');
   }, []);
@@ -392,8 +432,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     recordStartTsRef.current = null;
     apexYRef.current = null;
     hasExitedApexRef.current = false;
+    apexExitTsRef.current = null;
     deepYRef.current = null;
-    riseConfirmRef.current = 0;
+    downswingEndTsRef.current = null;
     lastDeepGrowthTsRef.current = null;
     setStatus('idle');
   }, []);

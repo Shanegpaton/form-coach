@@ -90,6 +90,9 @@ type context = {
 
 const PATH_ANGLE_THRESHOLD_DEG = 5;
 const NEUTRAL_PATH_ANGLE_DEG = -101;
+const DOWNSWING_DROP_FROM_TOP_Y = 0.055;
+const DOWNSWING_END_CONFIRM_FRAMES = 3;
+const RISE_FROM_DEEP_Y = 0.004;
 
 type Point2D = { x: number; y: number };
 
@@ -128,6 +131,15 @@ function midPoint2D(a: Point2D, b: Point2D): Point2D {
 function hipMidpoint(f: Keypoints): Point2D | null {
   if (f.leftHip && f.rightHip) return midPoint2D(metricPoint(f, f.leftHip), metricPoint(f, f.rightHip));
   return null;
+}
+
+function wristMidpoint(f: Keypoints): Point2D | null {
+  const points: Point2D[] = [];
+  if (f.leftWrist) points.push(metricPoint(f, f.leftWrist));
+  if (f.rightWrist) points.push(metricPoint(f, f.rightWrist));
+  if (points.length === 0) return null;
+  if (points.length === 1) return points[0];
+  return midPoint2D(points[0], points[1]);
 }
 
 function torsoLengthFromSetup(setup: Keypoints): number | null {
@@ -190,14 +202,21 @@ function calculateMetadata(recordedFrames: Keypoints[]): SwingAnalysis["metadata
   };
 }
 
+function wristHandY(frame: Keypoints): number | null {
+  const ys: number[] = [];
+  if (frame.leftWrist) ys.push(frame.leftWrist.y);
+  if (frame.rightWrist) ys.push(frame.rightWrist.y);
+  if (ys.length === 0) return null;
+  return ys.reduce((sum, y) => sum + y, 0) / ys.length;
+}
+
 function calculatePhases(recordedFrames: Keypoints[]) {
-  let topframe = 0;
-  while (topframe < recordedFrames.length && !recordedFrames[topframe].leftWrist) {
-    topframe += 1;
+  let firstWristFrame = 0;
+  while (firstWristFrame < recordedFrames.length && wristHandY(recordedFrames[firstWristFrame]) == null) {
+    firstWristFrame += 1;
   }
-  if (topframe >= recordedFrames.length) {
+  if (firstWristFrame >= recordedFrames.length) {
     const f0 = recordedFrames[0];
-    const t0 = f0.timestamp;
     return {
       setupFrame: f0,
       topFrame: f0,
@@ -207,23 +226,57 @@ function calculatePhases(recordedFrames: Keypoints[]) {
     };
   }
 
-  // Pass 1: global max wrist y = "top" (must finish before impact — updating both in one loop
-  // could move topframe after impactframe was set, giving impactMs < topMs).
-  for (let i = topframe + 1; i < recordedFrames.length; i++) {
-    const lw = recordedFrames[i].leftWrist;
-    const topLw = recordedFrames[topframe].leftWrist;
-    if (!lw || !topLw) continue;
-    if (lw.y > topLw.y) topframe = i;
+  let topframe = firstWristFrame;
+  let topY = wristHandY(recordedFrames[firstWristFrame]) ?? 0;
+  let hasStartedDown = false;
+  let deepestFrame = firstWristFrame;
+  let deepestY = topY;
+  let endSignalCount = 0;
+  let endSignalStart = -1;
+  let impactframe = firstWristFrame;
+
+  for (let i = firstWristFrame + 1; i < recordedFrames.length; i++) {
+    const y = wristHandY(recordedFrames[i]);
+
+    if (!hasStartedDown) {
+      if (y == null) continue;
+      if (y < topY) {
+        topY = y;
+        topframe = i;
+        deepestFrame = i;
+        deepestY = y;
+        continue;
+      }
+      if (y > topY + DOWNSWING_DROP_FROM_TOP_Y) {
+        hasStartedDown = true;
+        deepestFrame = i;
+        deepestY = y;
+      }
+      continue;
+    }
+
+    const isEndSignal = y == null || y < deepestY - RISE_FROM_DEEP_Y;
+    if (isEndSignal) {
+      if (endSignalCount === 0) endSignalStart = i;
+      endSignalCount += 1;
+      if (endSignalCount >= DOWNSWING_END_CONFIRM_FRAMES) {
+        impactframe = Math.max(topframe, endSignalStart - 1);
+        break;
+      }
+      continue;
+    }
+
+    endSignalCount = 0;
+    endSignalStart = -1;
+    if (y > deepestY) {
+      deepestY = y;
+      deepestFrame = i;
+    }
+    impactframe = deepestFrame;
   }
 
-  // Pass 2: min wrist y after top index = impact candidate (same heuristic as before, but i > top only).
-  let impactframe = topframe;
-  for (let i = topframe + 1; i < recordedFrames.length; i++) {
-    const lw = recordedFrames[i].leftWrist;
-    const impLw = recordedFrames[impactframe].leftWrist;
-    if (!lw || !impLw) continue;
-    if (lw.y < impLw.y) impactframe = i;
-  }
+  if (!hasStartedDown) impactframe = firstWristFrame;
+  else if (impactframe === firstWristFrame) impactframe = deepestFrame;
 
   const t0 = recordedFrames[0].timestamp;
   return {
@@ -465,12 +518,9 @@ function calculateSequencing(ctx: context): SwingAnalysis["sequencing"] {
 
 function calculateSwingPath(ctx: context): SwingAnalysis["swingPath"] {
   const T = ctx.torsoLength;
-  const w0 = ctx.setupFrame.leftWrist;
-  const wTop = ctx.topFrame.leftWrist;
-  const wImp = ctx.impactFrame.leftWrist;
-  const setupWrist = w0 ? metricPoint(ctx.setupFrame, w0) : null;
-  const topWrist = wTop ? metricPoint(ctx.topFrame, wTop) : null;
-  const impactWrist = wImp ? metricPoint(ctx.impactFrame, wImp) : null;
+  const setupWrist = wristMidpoint(ctx.setupFrame);
+  const topWrist = wristMidpoint(ctx.topFrame);
+  const impactWrist = wristMidpoint(ctx.impactFrame);
 
   const backswingVectorRaw =
     setupWrist && topWrist ? { x: topWrist.x - setupWrist.x, y: topWrist.y - setupWrist.y } : null;

@@ -9,6 +9,9 @@ type SwingReplayComparisonProps = {
   swingVideoUrl: string | null;
   swingVideoClipStartSeconds?: number;
   swingVideoSize?: { width: number; height: number } | null;
+  topTimeMs?: number | null;
+  impactTimeMs?: number | null;
+  impactVideoLeadInSeconds?: number;
 };
 
 type KeypointName = Exclude<keyof Keypoints, 'timestamp' | 'sourceWidth' | 'sourceHeight'>;
@@ -187,6 +190,9 @@ export function SwingReplayComparison({
   swingVideoUrl,
   swingVideoClipStartSeconds = 0,
   swingVideoSize = null,
+  topTimeMs = null,
+  impactTimeMs = null,
+  impactVideoLeadInSeconds = 0,
 }: SwingReplayComparisonProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const userVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -219,6 +225,42 @@ export function SwingReplayComparison({
     return Math.max(0, frames[frames.length - 1].timestamp - frames[0].timestamp) / 1000;
   }, [frames]);
   const poseElapsedSeconds = poseDurationSeconds * poseProgress;
+  const topPoseSeconds =
+    topTimeMs != null && Number.isFinite(topTimeMs) ? Math.max(0, topTimeMs / 1000) : null;
+  const impactPoseSeconds =
+    impactTimeMs != null && Number.isFinite(impactTimeMs) ? Math.max(0, impactTimeMs / 1000) : null;
+  const topFrameIndex = useMemo(() => {
+    if (topPoseSeconds == null || frames.length === 0) return null;
+    const targetTimestamp = frames[0].timestamp + topPoseSeconds * 1000;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    frames.forEach((frame, index) => {
+      const distance = Math.abs(frame.timestamp - targetTimestamp);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    return bestIndex;
+  }, [frames, topPoseSeconds]);
+  const impactFrameIndex = useMemo(() => {
+    if (impactPoseSeconds == null || frames.length === 0) return null;
+    const targetTimestamp = frames[0].timestamp + impactPoseSeconds * 1000;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    frames.forEach((frame, index) => {
+      const distance = Math.abs(frame.timestamp - targetTimestamp);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    return bestIndex;
+  }, [frames, impactPoseSeconds]);
+  const topVideoSeconds =
+    topPoseSeconds != null ? topPoseSeconds + Math.max(0, impactVideoLeadInSeconds) : null;
+  const impactVideoSeconds =
+    impactPoseSeconds != null ? impactPoseSeconds + Math.max(0, impactVideoLeadInSeconds) : null;
 
   const activeUserVideo = effectiveUserMode === 'video' && swingVideoUrl != null;
   const userVideoClipStart = Math.max(0, swingVideoClipStartSeconds);
@@ -232,6 +274,30 @@ export function SwingReplayComparison({
   const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
   const userScrubMax = activeUserVideo ? Math.max(userVideoReplayDuration, 0) : Math.max(0, frameCount - 1);
   const userScrubValue = activeUserVideo ? userVideoTime : currentIndex;
+  const startScrubPercent = userScrubMax > 0 ? 0 : null;
+  const topScrubValue = activeUserVideo ? topVideoSeconds : topFrameIndex;
+  const topScrubPercent =
+    topScrubValue != null && userScrubMax > 0
+      ? Math.max(0, Math.min(100, (topScrubValue / userScrubMax) * 100))
+      : null;
+  const impactScrubValue = activeUserVideo ? impactVideoSeconds : impactFrameIndex;
+  const impactScrubPercent =
+    impactScrubValue != null && userScrubMax > 0
+      ? Math.max(0, Math.min(100, (impactScrubValue / userScrubMax) * 100))
+      : null;
+  const showingImpact =
+    impactFrameIndex != null &&
+    (activeUserVideo
+      ? impactVideoSeconds != null && Math.abs(userVideoTime - impactVideoSeconds) <= VIDEO_STEP_SECONDS * 1.5
+      : currentIndex === impactFrameIndex);
+  const currentSegment = (() => {
+    const t = activeUserVideo
+      ? Math.max(0, userVideoTime - Math.max(0, impactVideoLeadInSeconds))
+      : poseElapsedSeconds;
+    if (topPoseSeconds != null && t < topPoseSeconds) return 'Backswing / takeaway';
+    if (impactPoseSeconds != null && t <= impactPoseSeconds) return 'Downswing';
+    return 'Follow-through';
+  })();
   const userMediaStyle = {
     aspectRatio: validVideoSize(swingVideoSize)
       ? `${swingVideoSize.width} / ${swingVideoSize.height}`
@@ -331,6 +397,32 @@ export function SwingReplayComparison({
     setPoseScrubProgress(nextIndex / (frameCount - 1));
   }
 
+  function jumpToImpact() {
+    pauseUserReplay();
+    if (activeUserVideo) {
+      if (impactVideoSeconds == null) return;
+      const bounded = Math.max(0, Math.min(userVideoReplayDuration, impactVideoSeconds));
+      setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
+      setUserVideoTime(bounded);
+      return;
+    }
+    if (impactFrameIndex == null || frameCount <= 1) return;
+    setPoseScrubProgress(impactFrameIndex / (frameCount - 1));
+  }
+
+  function jumpToTop() {
+    pauseUserReplay();
+    if (activeUserVideo) {
+      if (topVideoSeconds == null) return;
+      const bounded = Math.max(0, Math.min(userVideoReplayDuration, topVideoSeconds));
+      setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
+      setUserVideoTime(bounded);
+      return;
+    }
+    if (topFrameIndex == null || frameCount <= 1) return;
+    setPoseScrubProgress(topFrameIndex / (frameCount - 1));
+  }
+
   function toggleUserPlay() {
     if (activeUserVideo) {
       const video = userVideoRef.current;
@@ -399,7 +491,19 @@ export function SwingReplayComparison({
       <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
         <div className="grid gap-3">
           <div className="flex min-h-12 flex-wrap items-center justify-between gap-3">
-            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your swing</h4>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your swing</h4>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                  {currentSegment}
+                </span>
+                {showingImpact ? (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+                    Impact frame
+                  </span>
+                ) : null}
+              </div>
+            </div>
             <div className="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
               <button
                 type="button"
@@ -500,31 +604,81 @@ export function SwingReplayComparison({
           </figure>
 
           <div className="space-y-3">
-            <input
-              type="range"
-              min="0"
-              max={userScrubMax}
-              step={activeUserVideo ? VIDEO_STEP_SECONDS : 1}
-              value={userScrubValue}
-              disabled={
-                activeUserVideo
-                  ? userVideoReplayDuration <= 0 || !userVideoReadyAtClipStart
-                  : frameCount <= 1
-              }
-              aria-label="Your swing replay position"
-              onChange={(event) => {
-                const nextValue = Number(event.target.value);
-                pauseUserReplay();
-                if (activeUserVideo) {
-                  const bounded = Math.max(0, Math.min(userVideoReplayDuration, nextValue));
-                  setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
-                  setUserVideoTime(bounded);
-                } else {
-                  setPoseScrubProgress(frameCount > 1 ? nextValue / (frameCount - 1) : 0);
-                }
-              }}
-              className="w-full accent-zinc-900 disabled:opacity-50 dark:accent-zinc-100"
-            />
+            <div>
+              <div className="relative">
+                <input
+                  type="range"
+                  min="0"
+                  max={userScrubMax}
+                  step={activeUserVideo ? VIDEO_STEP_SECONDS : 1}
+                  value={userScrubValue}
+                  disabled={
+                    activeUserVideo
+                      ? userVideoReplayDuration <= 0 || !userVideoReadyAtClipStart
+                      : frameCount <= 1
+                  }
+                  aria-label="Your swing replay position"
+                  onChange={(event) => {
+                    const nextValue = Number(event.target.value);
+                    pauseUserReplay();
+                    if (activeUserVideo) {
+                      const bounded = Math.max(0, Math.min(userVideoReplayDuration, nextValue));
+                      setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
+                      setUserVideoTime(bounded);
+                    } else {
+                      setPoseScrubProgress(frameCount > 1 ? nextValue / (frameCount - 1) : 0);
+                    }
+                  }}
+                  className="w-full accent-zinc-900 disabled:opacity-50 dark:accent-zinc-100"
+                />
+                {impactScrubPercent != null ? (
+                  <span
+                    className="pointer-events-none absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-amber-500"
+                    style={{ left: `${impactScrubPercent}%` }}
+                    aria-hidden
+                  />
+                ) : null}
+                {topScrubPercent != null ? (
+                  <span
+                    className="pointer-events-none absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-sky-500"
+                    style={{ left: `${topScrubPercent}%` }}
+                    aria-hidden
+                  />
+                ) : null}
+                {startScrubPercent != null ? (
+                  <span
+                    className="pointer-events-none absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-emerald-500"
+                    style={{ left: `${startScrubPercent}%` }}
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+              {impactFrameIndex != null ? (
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span>
+                    Green = start, blue = top/downswing start, amber = impact/end of downswing.
+                  </span>
+                  <span className="inline-flex flex-wrap gap-3">
+                    {topFrameIndex != null ? (
+                      <button
+                        type="button"
+                        className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-950 dark:text-zinc-200 dark:decoration-zinc-600 dark:hover:text-white"
+                        onClick={jumpToTop}
+                      >
+                        Jump to top
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-950 dark:text-zinc-200 dark:decoration-zinc-600 dark:hover:text-white"
+                      onClick={jumpToImpact}
+                    >
+                      Jump to impact
+                    </button>
+                  </span>
+                </div>
+              ) : null}
+            </div>
 
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
               <div className="grid grid-cols-3 gap-2">

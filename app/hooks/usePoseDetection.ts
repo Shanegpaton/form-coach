@@ -19,7 +19,7 @@ export type FrameData = {
   sourceHeight?: number;
 };
 
-const TARGET_POSE_FPS = 30;
+const TARGET_POSE_FPS = 60;
 const MIN_POSE_INTERVAL_MS = 1000 / TARGET_POSE_FPS;
 
 function humanMediaError(e: unknown): string {
@@ -130,11 +130,15 @@ export function usePoseDetection(
     if (!detectingRef.current || !video) return;
 
     if (video.requestVideoFrameCallback) {
-      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((now) => {
+      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((now, metadata) => {
         if (!detectingRef.current) return;
+        const frameTimestamp =
+          Number.isFinite(metadata.mediaTime) && metadata.mediaTime >= 0
+            ? metadata.mediaTime * 1000
+            : now;
         const lastTimestamp = lastVideoTimestampMsRef.current;
-        if (lastTimestamp == null || now - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
-          detectCurrentVideoFrame(now);
+        if (lastTimestamp == null || frameTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+          detectCurrentVideoFrame(frameTimestamp);
         }
         scheduleVideoFrameDetection();
       });
@@ -143,10 +147,13 @@ export function usePoseDetection(
 
     animationFrameIdRef.current = requestAnimationFrame(() => {
       if (!detectingRef.current) return;
-      const now = performance.now();
+      const mediaTimestamp =
+        Number.isFinite(video.currentTime) && video.currentTime >= 0
+          ? video.currentTime * 1000
+          : performance.now();
       const lastTimestamp = lastVideoTimestampMsRef.current;
-      if (lastTimestamp == null || now - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
-        detectCurrentVideoFrame(now);
+      if (lastTimestamp == null || mediaTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
+        detectCurrentVideoFrame(mediaTimestamp);
       }
       scheduleVideoFrameDetection();
     });

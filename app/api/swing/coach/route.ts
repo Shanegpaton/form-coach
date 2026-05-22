@@ -1,6 +1,7 @@
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import type { SwingAnalysis } from "../../../lib/swing/calculateSwingMetrics";
+import type { SwingFinding } from "../../../lib/swing/interpretSwingFindings";
 import driverProRanges from "../../../lib/swing/data/driverProRanges.json";
 import driverMetricImportance from "../../../lib/swing/data/driverMetricImportance.json";
 
@@ -73,10 +74,13 @@ Timing vs pros (critical):
 - You may briefly note obvious timing/data issues, but do not coach based on them.
 
 Your job:
-- Compare the user's swing to reference ranges (posture, kinematics, path, stability).
-- Identify ONLY the 2–3 most important issues—**weighted by metricImportance**, not by how many numbers diverge (focus on ball flight + consistency).
+- Base your feedback mainly on the displayed findings: swing path, spine angle/bend, knee flex, and head movement.
+- Treat user corrections/context as important coaching context. If user context conflicts with a measured finding, acknowledge it by coaching the pattern they felt without pretending the measurement is certain.
+- Treat user priority overrides as explicit direction about what the golfer wants more or less feedback on. A high-focus override can be coached even if another metric is numerically more severe.
+- Identify ONLY the 2–3 most important issues—**weighted by displayed finding priority and metricImportance**, not by how many numbers diverge (focus on ball flight + consistency).
 - Explain what each issue likely causes.
-- Give 1–2 simple, actionable fixes per issue.
+- Give custom drills, short coaching tips, and one clear next-swing focus.
+- Do not make hip movement or timing a primary topic unless the user explicitly asks about it.
 
 Style rules (VERY IMPORTANT):
 - Speak like a coach, NOT a data analyst.
@@ -89,7 +93,8 @@ Style rules (VERY IMPORTANT):
 
 Output format:
 - Max 2 short paragraphs (first paragraph = first issue immediately—no standalone intro).
-- Then a small bullet list of fixes.
+- Then a small bullet list of **drills / fixes**.
+- End with one concise **next swing focus**.
 - Use **bold** for key concepts and fixes.
 - Keep it clear, simple, and actionable.
 - Do NOT overwhelm the user with many details.
@@ -104,6 +109,37 @@ function looksLikeSwingAnalysis(v: unknown): v is SwingAnalysis {
   const m = v.metadata;
   if (!isRecord(m)) return false;
   return typeof m.durationMs === "number";
+}
+
+function readOptionalString(v: unknown): string {
+  return typeof v === "string" ? v.slice(0, 2000) : "";
+}
+
+function readOptionalStringMap(v: unknown): Record<string, string> {
+  if (!isRecord(v)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      out[key] = value.trim().slice(0, 1000);
+    }
+  }
+  return out;
+}
+
+function readOptionalNumberMap(v: unknown): Record<string, number> {
+  if (!isRecord(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      out[key] = Math.min(5, Math.max(1, Math.round(value)));
+    }
+  }
+  return out;
+}
+
+function readOptionalFindings(v: unknown): SwingFinding[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isRecord).slice(0, 4) as unknown as SwingFinding[];
 }
 
 export async function POST(req: Request) {
@@ -129,6 +165,10 @@ export async function POST(req: Request) {
   }
 
   const swing = body.swing as SwingAnalysis;
+  const findings = readOptionalFindings(body.findings);
+  const userContext = readOptionalString(body.userContext);
+  const corrections = readOptionalStringMap(body.corrections);
+  const priorityOverrides = readOptionalNumberMap(body.priorityOverrides);
   const ranges =
     body.ranges !== undefined && body.ranges !== null
       ? (body.ranges as typeof driverProRanges)
@@ -152,7 +192,7 @@ export async function POST(req: Request) {
     referenceRanges: rangesForCoach,
   };
 
-  const userPrompt = `## User swing (JSON)\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\nGive coaching feedback comparing the user to the reference (posture, kinematics, path, stability—not user ms vs pro timing). Weight issues by metricImportance. **First sentence = first concrete issue**—no praise-only or "overall" intro paragraph.`;
+  const userPrompt = `## Displayed swing findings (JSON)\nThese are the findings shown to the user. Base the coaching primarily on these. The priority field may include user overrides.\n\`\`\`json\n${JSON.stringify(findings, null, 2)}\n\`\`\`\n\n## User corrections, context, and priority overrides (JSON)\n\`\`\`json\n${JSON.stringify({ userContext, corrections, priorityOverrides }, null, 2)}\n\`\`\`\n\n## User swing raw metrics (JSON)\nUse raw metrics only as backup context; do not turn this into a data report.\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\nGive coaching feedback from the displayed findings and user context. Weight issues by finding priority, user priority overrides, and metricImportance. **First sentence = first concrete issue**—no praise-only or "overall" intro paragraph.`;
 
   try {
     const result = streamText({
