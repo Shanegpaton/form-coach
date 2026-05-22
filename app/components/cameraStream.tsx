@@ -112,6 +112,9 @@ export default function CameraStream() {
   const swingVideoUrlRef = useRef<string | null>(null);
   const videoRecordingStartTimestampRef = useRef<number | null>(null);
   const swingVideoClipStartSecondsRef = useRef(0);
+  const swingVideoFrameCallbackIdRef = useRef(0);
+  const swingVideoFrameTimestampsRef = useRef<number[]>([]);
+  const swingVideoFrameTimesSecondsRef = useRef<number[]>([]);
   const recordedFramesRef = useRef<Keypoints[]>([]);
   const { landmarks, frameData, startCamera, cameraError, hasCamera, isModelReady } =
     usePoseDetection(videoRef);
@@ -133,6 +136,7 @@ export default function CameraStream() {
   const [cameraStartPending, setCameraStartPending] = useState(false);
   const [swingVideoUrl, setSwingVideoUrl] = useState<string | null>(null);
   const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
+  const [swingVideoFrameTimesSeconds, setSwingVideoFrameTimesSeconds] = useState<number[]>([]);
   const [swingVideoSize, setSwingVideoSize] = useState<VideoSize | null>(null);
   const [demoFrames, setDemoFrames] = useState<Keypoints[] | null>(null);
   const [selectedClub, setSelectedClub] = useState<SwingClubId>('driver');
@@ -260,12 +264,40 @@ export default function CameraStream() {
   }, [status, analysisFrames, selectedClub]);
 
   useEffect(() => {
+    const stopVideoFrameTimestampCapture = () => {
+      const video = videoRef.current;
+      if (swingVideoFrameCallbackIdRef.current && video?.cancelVideoFrameCallback) {
+        video.cancelVideoFrameCallback(swingVideoFrameCallbackIdRef.current);
+      }
+      swingVideoFrameCallbackIdRef.current = 0;
+    };
+
+    const startVideoFrameTimestampCapture = () => {
+      const video = videoRef.current;
+      swingVideoFrameTimestampsRef.current = [];
+      stopVideoFrameTimestampCapture();
+      if (!video?.requestVideoFrameCallback) return;
+
+      const collect = (now: DOMHighResTimeStamp) => {
+        if (!swingRecorderRef.current || swingRecorderRef.current.state === 'inactive') {
+          swingVideoFrameCallbackIdRef.current = 0;
+          return;
+        }
+        swingVideoFrameTimestampsRef.current.push(now);
+        swingVideoFrameCallbackIdRef.current = video.requestVideoFrameCallback(collect);
+      };
+
+      swingVideoFrameCallbackIdRef.current = video.requestVideoFrameCallback(collect);
+    };
+
     const stopSwingVideoRecording = (keepVideo: boolean) => {
       const recorder = swingRecorderRef.current;
       keepSwingVideoOnStopRef.current = keepVideo;
       if (keepVideo) {
         const firstPoseTimestamp =
           replayFrames[0]?.timestamp ?? recordedFramesRef.current[0]?.timestamp;
+        const lastPoseTimestamp =
+          replayFrames.at(-1)?.timestamp ?? recordedFramesRef.current.at(-1)?.timestamp;
         const recordingStartTimestamp = videoRecordingStartTimestampRef.current;
         // MediaRecorder blobs appear to need a small earlier seek to match pose-derived frames.
         // Keep this separate from event marker timing, which stays pose-relative in replay.
@@ -277,9 +309,37 @@ export default function CameraStream() {
                   SWING_VIDEO_RECORDER_ALIGNMENT_SECONDS,
               )
             : 0;
+        const replayDurationSeconds =
+          firstPoseTimestamp != null && lastPoseTimestamp != null
+            ? Math.max(0, (lastPoseTimestamp - firstPoseTimestamp) / 1000)
+            : 0;
+        swingVideoFrameTimesSecondsRef.current =
+          recordingStartTimestamp != null
+            ? swingVideoFrameTimestampsRef.current
+                .map(
+                  (timestamp) =>
+                    (timestamp - recordingStartTimestamp) / 1000 -
+                    swingVideoClipStartSecondsRef.current,
+                )
+                .filter(
+                  (seconds) =>
+                    Number.isFinite(seconds) &&
+                    seconds >= -0.001 &&
+                    (replayDurationSeconds <= 0 || seconds <= replayDurationSeconds + 0.001),
+                )
+                .map((seconds) => Math.max(0, Math.min(replayDurationSeconds, seconds)))
+            : [];
+        if (
+          swingVideoFrameTimesSecondsRef.current.length > 0 &&
+          swingVideoFrameTimesSecondsRef.current[0] > 0.01
+        ) {
+          swingVideoFrameTimesSecondsRef.current.unshift(0);
+        }
       } else {
         swingVideoClipStartSecondsRef.current = 0;
+        swingVideoFrameTimesSecondsRef.current = [];
       }
+      stopVideoFrameTimestampCapture();
       if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
       }
@@ -304,6 +364,8 @@ export default function CameraStream() {
       const mimeType = preferredRecordingMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       swingVideoChunksRef.current = [];
+      swingVideoFrameTimesSecondsRef.current = [];
+      setSwingVideoFrameTimesSeconds([]);
       videoRecordingStartTimestampRef.current = recordingStartTimestamp;
       keepSwingVideoOnStopRef.current = false;
       recorder.ondataavailable = (event) => {
@@ -323,23 +385,35 @@ export default function CameraStream() {
             return nextUrl;
           });
           setSwingVideoClipStartSeconds(swingVideoClipStartSecondsRef.current);
+          setSwingVideoFrameTimesSeconds(swingVideoFrameTimesSecondsRef.current);
         }
         swingVideoChunksRef.current = [];
+        swingVideoFrameTimestampsRef.current = [];
       };
       swingRecorderRef.current = recorder;
       recorder.start(100);
+      startVideoFrameTimestampCapture();
     } catch {
       swingRecorderRef.current = null;
       swingVideoChunksRef.current = [];
+      swingVideoFrameTimestampsRef.current = [];
+      swingVideoFrameTimesSecondsRef.current = [];
+      setSwingVideoFrameTimesSeconds([]);
+      stopVideoFrameTimestampCapture();
     }
   }, [status, frameData?.timestamp, replayFrames]);
 
   useEffect(() => {
+    const video = videoRef.current;
     return () => {
       const recorder = swingRecorderRef.current;
       keepSwingVideoOnStopRef.current = false;
       if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
+      }
+      if (swingVideoFrameCallbackIdRef.current && video?.cancelVideoFrameCallback) {
+        video.cancelVideoFrameCallback(swingVideoFrameCallbackIdRef.current);
+        swingVideoFrameCallbackIdRef.current = 0;
       }
       if (swingVideoUrlRef.current) {
         URL.revokeObjectURL(swingVideoUrlRef.current);
@@ -616,6 +690,7 @@ export default function CameraStream() {
           frames={displayFrames}
           swingVideoUrl={swingVideoUrl}
           swingVideoClipStartSeconds={swingVideoClipStartSeconds}
+          swingVideoFrameTimesSeconds={swingVideoFrameTimesSeconds}
           swingVideoSize={swingVideoSize}
           topTimeMs={lastSwing.sequencing.timing.absolute.topMs}
           impactTimeMs={lastSwing.sequencing.timing.absolute.impactMs}

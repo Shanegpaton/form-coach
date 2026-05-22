@@ -10,6 +10,7 @@ type SwingReplayComparisonProps = {
   frames: Keypoints[];
   swingVideoUrl: string | null;
   swingVideoClipStartSeconds?: number;
+  swingVideoFrameTimesSeconds?: number[];
   swingVideoSize?: { width: number; height: number } | null;
   topTimeMs?: number | null;
   impactTimeMs?: number | null;
@@ -74,6 +75,20 @@ function medianFrameStepSeconds(frames: Keypoints[]): number | null {
   const medianMs =
     deltas.length % 2 === 0 ? (deltas[middle - 1] + deltas[middle]) / 2 : deltas[middle];
   return medianMs / 1000;
+}
+
+function nearestFrameIndexForTime(frameTimes: number[], time: number): number {
+  if (frameTimes.length <= 1) return 0;
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  frameTimes.forEach((frameTime, index) => {
+    const distance = Math.abs(frameTime - time);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
 }
 
 function formatTime(seconds: number): string {
@@ -197,6 +212,7 @@ export function SwingReplayComparison({
   frames,
   swingVideoUrl,
   swingVideoClipStartSeconds = 0,
+  swingVideoFrameTimesSeconds = [],
   swingVideoSize = null,
   topTimeMs = null,
   impactTimeMs = null,
@@ -282,17 +298,31 @@ export function SwingReplayComparison({
     poseDurationSeconds,
   );
   const userVideoStepSeconds = poseFrameStepSeconds ?? VIDEO_STEP_SECONDS;
-  const userVideoFrameCount =
-    userVideoReplayDuration > 0
-      ? Math.max(1, Math.round(userVideoReplayDuration / userVideoStepSeconds) + 1)
-      : 0;
-  const userVideoFrameIndex =
-    userVideoFrameCount > 0
-      ? Math.max(
-          0,
-          Math.min(userVideoFrameCount - 1, Math.round(userVideoTime / userVideoStepSeconds)),
+  const fallbackUserVideoFrameTimes = useMemo(() => {
+    if (userVideoReplayDuration <= 0) return [];
+    const count = Math.max(1, Math.round(userVideoReplayDuration / userVideoStepSeconds) + 1);
+    return Array.from({ length: count }, (_, index) =>
+      Math.min(userVideoReplayDuration, index * userVideoStepSeconds),
+    );
+  }, [userVideoReplayDuration, userVideoStepSeconds]);
+  const capturedUserVideoFrameTimes = useMemo(
+    () =>
+      swingVideoFrameTimesSeconds
+        .filter(
+          (seconds) =>
+            Number.isFinite(seconds) &&
+            seconds >= -0.001 &&
+            (userVideoReplayDuration <= 0 || seconds <= userVideoReplayDuration + 0.001),
         )
-      : 0;
+        .map((seconds) => Math.max(0, Math.min(userVideoReplayDuration, seconds)))
+        .sort((a, b) => a - b),
+    [swingVideoFrameTimesSeconds, userVideoReplayDuration],
+  );
+  const userVideoFrameTimes =
+    capturedUserVideoFrameTimes.length > 0 ? capturedUserVideoFrameTimes : fallbackUserVideoFrameTimes;
+  const userVideoFrameCount = userVideoFrameTimes.length;
+  const userVideoFrameIndex =
+    userVideoFrameCount > 0 ? nearestFrameIndexForTime(userVideoFrameTimes, userVideoTime) : 0;
   const userVideoReadyAtClipStart = !activeUserVideo || userVideoReadyKey === userVideoClipKey;
   const userScrubMax = activeUserVideo ? Math.max(0, userVideoFrameCount - 1) : Math.max(0, frameCount - 1);
   const userScrubValue = activeUserVideo ? userVideoFrameIndex : currentIndex;
@@ -410,7 +440,7 @@ export function SwingReplayComparison({
         0,
         Math.min(userVideoFrameCount - 1, userVideoFrameIndex + direction),
       );
-      const nextTime = Math.min(userVideoReplayDuration, nextFrameIndex * userVideoStepSeconds);
+      const nextTime = userVideoFrameTimes[nextFrameIndex] ?? userVideoTime;
       setVideoTime(userVideoRef.current, userVideoClipStart + nextTime);
       setUserVideoTime(nextTime);
       return;
@@ -652,7 +682,7 @@ export function SwingReplayComparison({
                     pauseUserReplay();
                     if (activeUserVideo) {
                       const boundedFrame = Math.max(0, Math.min(userVideoFrameCount - 1, nextValue));
-                      const bounded = Math.min(userVideoReplayDuration, boundedFrame * userVideoStepSeconds);
+                      const bounded = userVideoFrameTimes[boundedFrame] ?? 0;
                       setVideoTime(userVideoRef.current, userVideoClipStart + bounded);
                       setUserVideoTime(bounded);
                     } else {
