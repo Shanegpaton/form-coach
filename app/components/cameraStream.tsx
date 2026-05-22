@@ -38,7 +38,7 @@ function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
 const btnFocus =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-zinc-200';
 
-const SWING_VIDEO_LEAD_IN_SECONDS = 0.2;
+const SWING_VIDEO_RECORDER_ALIGNMENT_SECONDS = 0.15;
 
 function preferredRecordingMimeType(): string | undefined {
   const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -267,11 +267,14 @@ export default function CameraStream() {
         const firstPoseTimestamp =
           replayFrames[0]?.timestamp ?? recordedFramesRef.current[0]?.timestamp;
         const recordingStartTimestamp = videoRecordingStartTimestampRef.current;
+        // MediaRecorder blobs appear to need a small earlier seek to match pose-derived frames.
+        // Keep this separate from event marker timing, which stays pose-relative in replay.
         swingVideoClipStartSecondsRef.current =
           firstPoseTimestamp != null && recordingStartTimestamp != null
             ? Math.max(
                 0,
-                (firstPoseTimestamp - recordingStartTimestamp) / 1000 - SWING_VIDEO_LEAD_IN_SECONDS,
+                (firstPoseTimestamp - recordingStartTimestamp) / 1000 -
+                  SWING_VIDEO_RECORDER_ALIGNMENT_SECONDS,
               )
             : 0;
       } else {
@@ -616,7 +619,6 @@ export default function CameraStream() {
           swingVideoSize={swingVideoSize}
           topTimeMs={lastSwing.sequencing.timing.absolute.topMs}
           impactTimeMs={lastSwing.sequencing.timing.absolute.impactMs}
-          impactVideoLeadInSeconds={SWING_VIDEO_LEAD_IN_SECONDS}
         />
       ) : null}
 

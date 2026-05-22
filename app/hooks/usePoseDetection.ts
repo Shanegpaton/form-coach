@@ -130,12 +130,11 @@ export function usePoseDetection(
     if (!detectingRef.current || !video) return;
 
     if (video.requestVideoFrameCallback) {
-      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((now, metadata) => {
+      videoFrameCallbackIdRef.current = video.requestVideoFrameCallback((now) => {
         if (!detectingRef.current) return;
-        const frameTimestamp =
-          Number.isFinite(metadata.mediaTime) && metadata.mediaTime >= 0
-            ? metadata.mediaTime * 1000
-            : now;
+        // Live camera mediaTime can stall or quantize on some mobile cameras even while the
+        // preview advances. MediaPipe VIDEO mode only needs a steadily increasing timestamp.
+        const frameTimestamp = now;
         const lastTimestamp = lastVideoTimestampMsRef.current;
         if (lastTimestamp == null || frameTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
           detectCurrentVideoFrame(frameTimestamp);
@@ -147,10 +146,7 @@ export function usePoseDetection(
 
     animationFrameIdRef.current = requestAnimationFrame(() => {
       if (!detectingRef.current) return;
-      const mediaTimestamp =
-        Number.isFinite(video.currentTime) && video.currentTime >= 0
-          ? video.currentTime * 1000
-          : performance.now();
+      const mediaTimestamp = performance.now();
       const lastTimestamp = lastVideoTimestampMsRef.current;
       if (lastTimestamp == null || mediaTimestamp - lastTimestamp >= MIN_POSE_INTERVAL_MS) {
         detectCurrentVideoFrame(mediaTimestamp);

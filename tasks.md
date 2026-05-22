@@ -31,7 +31,7 @@
 ## Bugs
 
 ### Frame impact
-- the tag in the ui for the pose replay says both downswing and impact when it should just say impact for that frame. 
+- the impact frame on the pose is at the perfect time, however in the video it seems to be about 100-175ms late. The frames clearly line up, but the top of the backswing and impact markers are at different times for the video and the pose. currently both the pose and video are the exact same lenghts. Some research into the 200ms lead for the video may be needed, as it does not seems to be diffrent between the two. The swing currently starts at the perfect time for both the pose and video and should not be changed.
 
 ### Video / Pose Switching
 - After switching between pose mode and video mode, the first few frames sometimes show the first frame of the recording not the swing. It switches to the first frames of the swing after watching it.
@@ -43,7 +43,7 @@
 ### Pose Tracking
 - Sometimes pose tracking gets stuck on the first detected position.
 - Tracking may stop updating even while the video continues.
-
+- this problem only is on my phone which is a 60fps camera
 
 ---
 

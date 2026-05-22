@@ -13,7 +13,6 @@ type SwingReplayComparisonProps = {
   swingVideoSize?: { width: number; height: number } | null;
   topTimeMs?: number | null;
   impactTimeMs?: number | null;
-  impactVideoLeadInSeconds?: number;
 };
 
 type KeypointName = Exclude<keyof Keypoints, 'timestamp' | 'sourceWidth' | 'sourceHeight'>;
@@ -188,7 +187,6 @@ export function SwingReplayComparison({
   swingVideoSize = null,
   topTimeMs = null,
   impactTimeMs = null,
-  impactVideoLeadInSeconds = 0,
 }: SwingReplayComparisonProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const userVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -256,10 +254,8 @@ export function SwingReplayComparison({
     });
     return bestIndex;
   }, [frames, impactPoseSeconds]);
-  const topVideoSeconds =
-    topPoseSeconds != null ? topPoseSeconds + Math.max(0, impactVideoLeadInSeconds) : null;
-  const impactVideoSeconds =
-    impactPoseSeconds != null ? impactPoseSeconds + Math.max(0, impactVideoLeadInSeconds) : null;
+  const topVideoSeconds = topPoseSeconds;
+  const impactVideoSeconds = impactPoseSeconds;
 
   const activeUserVideo = effectiveUserMode === 'video' && swingVideoUrl != null;
   const userVideoClipStart = Math.max(0, swingVideoClipStartSeconds);
@@ -290,13 +286,15 @@ export function SwingReplayComparison({
       ? impactVideoSeconds != null && Math.abs(userVideoTime - impactVideoSeconds) <= VIDEO_STEP_SECONDS * 1.5
       : currentIndex === impactFrameIndex);
   const currentSegment = (() => {
-    const t = activeUserVideo
-      ? Math.max(0, userVideoTime - Math.max(0, impactVideoLeadInSeconds))
-      : poseElapsedSeconds;
+    const t = activeUserVideo ? userVideoTime : poseElapsedSeconds;
     if (topPoseSeconds != null && t < topPoseSeconds) return 'Backswing / takeaway';
     if (impactPoseSeconds != null && t <= impactPoseSeconds) return 'Downswing';
     return 'Follow-through';
   })();
+  const currentPhaseLabel = showingImpact ? 'Impact frame' : currentSegment;
+  const currentPhaseClassName = showingImpact
+    ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100'
+    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200';
   const userMediaStyle = {
     aspectRatio: validVideoSize(swingVideoSize)
       ? `${swingVideoSize.width} / ${swingVideoSize.height}`
@@ -493,14 +491,9 @@ export function SwingReplayComparison({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your swing</h4>
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                  {currentSegment}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${currentPhaseClassName}`}>
+                  {currentPhaseLabel}
                 </span>
-                {showingImpact ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
-                    Impact frame
-                  </span>
-                ) : null}
               </div>
             </div>
             <div className="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
