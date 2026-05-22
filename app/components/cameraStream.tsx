@@ -115,7 +115,7 @@ export default function CameraStream() {
   const recordedFramesRef = useRef<Keypoints[]>([]);
   const { landmarks, frameData, startCamera, cameraError, hasCamera, isModelReady } =
     usePoseDetection(videoRef);
-  const { status, isArmed, isRecording, fullBodyFramed, recordedFrames, arm, cancel } =
+  const { status, isArmed, isRecording, fullBodyFramed, analysisFrames, replayFrames, arm, cancel } =
     useAutoSwingCapture(frameData);
 
   const poseColors = useMemo(() => getPoseColors(status, fullBodyFramed), [status, fullBodyFramed]);
@@ -137,7 +137,7 @@ export default function CameraStream() {
   const [demoFrames, setDemoFrames] = useState<Keypoints[] | null>(null);
   const [selectedClub, setSelectedClub] = useState<SwingClubId>('driver');
   const [lastSwingClub, setLastSwingClub] = useState<SwingClubId>('driver');
-  const displayFrames = demoFrames ?? recordedFrames;
+  const displayFrames = demoFrames ?? replayFrames;
 
   const swingFindings = useMemo(
     () => (lastSwing ? interpretSwingFindings(lastSwing) : []),
@@ -194,12 +194,12 @@ export default function CameraStream() {
     }
     if (
       (status === 'armed_waiting_motion' || status === 'recording' || status === 'completed') &&
-      recordedFrames.length > 0
+      replayFrames.length > 0
     ) {
-      return `${recordedFrames.length} frames`;
+      return `${replayFrames.length} replay frames`;
     }
     return null;
-  }, [status, fullBodyFramed, recordedFrames.length]);
+  }, [status, fullBodyFramed, replayFrames.length]);
 
   useEffect(() => {
     recordedFramesRef.current = displayFrames;
@@ -239,8 +239,8 @@ export default function CameraStream() {
   }, [landmarks, poseColors]);
 
   useEffect(() => {
-    if (status === 'completed' && recordedFrames.length > 0) {
-      const metrics = calculateSwingMetrics(recordedFrames);
+    if (status === 'completed' && analysisFrames.length > 0) {
+      const metrics = calculateSwingMetrics(analysisFrames);
       const video = videoRef.current;
       setSwingVideoSize(
         video && video.videoWidth > 0 && video.videoHeight > 0
@@ -257,7 +257,7 @@ export default function CameraStream() {
       setDemoFrames(null);
       setCoachConsumedForCapture(false);
     }
-  }, [status, recordedFrames, selectedClub]);
+  }, [status, analysisFrames, selectedClub]);
 
   useEffect(() => {
     const stopSwingVideoRecording = (keepVideo: boolean) => {
@@ -265,7 +265,7 @@ export default function CameraStream() {
       keepSwingVideoOnStopRef.current = keepVideo;
       if (keepVideo) {
         const firstPoseTimestamp =
-          recordedFrames[0]?.timestamp ?? recordedFramesRef.current[0]?.timestamp;
+          replayFrames[0]?.timestamp ?? recordedFramesRef.current[0]?.timestamp;
         const recordingStartTimestamp = videoRecordingStartTimestampRef.current;
         swingVideoClipStartSecondsRef.current =
           firstPoseTimestamp != null && recordingStartTimestamp != null
@@ -329,7 +329,7 @@ export default function CameraStream() {
       swingRecorderRef.current = null;
       swingVideoChunksRef.current = [];
     }
-  }, [status, frameData?.timestamp, recordedFrames]);
+  }, [status, frameData?.timestamp, replayFrames]);
 
   useEffect(() => {
     return () => {

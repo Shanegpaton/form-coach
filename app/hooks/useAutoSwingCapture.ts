@@ -15,6 +15,11 @@ type UseAutoSwingCaptureResult = {
   isArmed: boolean;
   /** During "get still": true only when all swing key landmarks are visible and inside the frame. */
   fullBodyFramed: boolean;
+  /** Setup through impact only. Use this for metrics/coaching. */
+  analysisFrames: Keypoints[];
+  /** Analysis frames plus a short follow-through tail. Use this for replay. */
+  replayFrames: Keypoints[];
+  /** Backwards-compatible alias for replayFrames. */
   recordedFrames: Keypoints[];
   arm: () => void;
   cancel: () => void;
@@ -29,18 +34,10 @@ const MOTION_CONFIRM_FRAMES = 3;
 /** Keep real pose samples from before motion confirmation so slow takeaways are not clipped. */
 const PREROLL_WINDOW_MS = 1100;
 const MIN_RECORDING_MS = 50;
-/** After the lowest point, if hands stop getting "deeper" on screen this long, end (follow-through often hides wrists—2D y never "rises"). */
-const POST_DEEP_PLATEAU_MS = 580;
-/** Do not plateau-stop until the clip is at least this long (avoids cutting off a paused or very slow downswing). */
-const MIN_RECORDING_BEFORE_PLATEAU_MS = 850;
-/** Keep a small amount of finish after the detected end of the downswing for replay. */
-const FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS = 600;
-/** Stop earlier if hands visibly rise high into the follow-through before the time buffer expires. */
-const FOLLOW_THROUGH_RISE_FROM_DEEP_Y = 0.14;
-/** Once hands have dropped from the top, keep only a bounded follow-through window. */
-const FOLLOW_THROUGH_AFTER_APEX_EXIT_MS = 1100;
+/** Replay-only pose/video tail after the impact/deepest hand frame. Not used for metrics. */
+const REPLAY_TAIL_AFTER_IMPACT_MS = 700;
 /** Hard cap so recording cannot run forever if heuristics miss. */
-const MAX_RECORDING_MS = 3800;
+const MAX_RECORDING_MS = 4500;
 /** In normalized coords, y grows downward. Min y = top of backswing; must drop this much before we treat "deep" + follow-through. */
 const DROP_FROM_APEX_Y = 0.055;
 /** Wrist moving up on screen (y decreasing) after deepest point of arc. */
@@ -161,11 +158,12 @@ function recordingHandY(kp: Keypoints): number | null {
  * - user clicks Arm
  * - wait for ~1s of stillness (low motion)
  * - once still, wait for consistent motion to start recording
- * - stop when hands have passed the bottom of the arc and rise on screen (y decreasing), **or** after a post-bottom plateau (hands vanish / move behind body in 2D), **or** at max duration.
+ * - freeze analysis frames at impact, then keep a short replay-only follow-through tail.
  */
 export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCaptureResult {
   const [status, setStatus] = useState<AutoSwingStatus>('idle');
-  const [recordedFrames, setRecordedFrames] = useState<Keypoints[]>([]);
+  const [analysisFrames, setAnalysisFrames] = useState<Keypoints[]>([]);
+  const [replayFrames, setReplayFrames] = useState<Keypoints[]>([]);
   const [fullBodyFramed, setFullBodyFramed] = useState(true);
 
   const isArmed = status === 'armed_waiting_still' || status === 'armed_waiting_motion';
@@ -189,8 +187,10 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
   const apexExitTsRef = useRef<number | null>(null);
   /** Largest y since exiting apex = hands lowest on screen (through impact). */
   const deepYRef = useRef<number | null>(null);
-  const downswingEndTsRef = useRef<number | null>(null);
-  const lastDeepGrowthTsRef = useRef<number | null>(null);
+  const deepFrameIndexRef = useRef<number | null>(null);
+  const impactTsRef = useRef<number | null>(null);
+  const replayTailEndTsRef = useRef<number | null>(null);
+  const analysisFramesRef = useRef<Keypoints[]>([]);
 
   useEffect(() => {
     if (!frameData) return;
@@ -280,8 +280,10 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
             hasExitedApexRef.current = false;
             apexExitTsRef.current = null;
             deepYRef.current = null;
-            downswingEndTsRef.current = null;
-            lastDeepGrowthTsRef.current = null;
+            deepFrameIndexRef.current = null;
+            impactTsRef.current = null;
+            replayTailEndTsRef.current = null;
+            analysisFramesRef.current = [];
             setStatus('recording');
             rafId = requestAnimationFrame(tick);
             return;
@@ -298,8 +300,23 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
         if (startTs != null) {
           const elapsed = kp.timestamp - startTs;
           if (elapsed >= MAX_RECORDING_MS) {
-            setRecordedFrames(recordedRef.current);
+            const fallbackAnalysis =
+              analysisFramesRef.current.length > 0 ? analysisFramesRef.current : recordedRef.current;
+            setAnalysisFrames(fallbackAnalysis);
+            setReplayFrames(recordedRef.current);
             setStatus('completed');
+            return;
+          }
+
+          const replayTailEndTs = replayTailEndTsRef.current;
+          if (replayTailEndTs != null) {
+            if (kp.timestamp >= replayTailEndTs) {
+              setAnalysisFrames(analysisFramesRef.current);
+              setReplayFrames(recordedRef.current);
+              setStatus('completed');
+              return;
+            }
+            rafId = requestAnimationFrame(tick);
             return;
           }
 
@@ -315,75 +332,40 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
                 hasExitedApexRef.current = true;
                 apexExitTsRef.current = kp.timestamp;
                 deepYRef.current = wy;
-                lastDeepGrowthTsRef.current = kp.timestamp;
+                deepFrameIndexRef.current = recordedRef.current.length - 1;
               }
 
               if (hasExitedApexRef.current) {
-                const deepBefore = deepYRef.current;
                 const deep = deepYRef.current;
-                if (deep == null) deepYRef.current = wy;
-                else deepYRef.current = Math.max(deep, wy);
+                if (deep == null || wy > deep) {
+                  deepYRef.current = wy;
+                  deepFrameIndexRef.current = recordedRef.current.length - 1;
+                }
 
                 const deepNow = deepYRef.current;
-                if (deepBefore != null && deepNow > deepBefore + 1e-6) {
-                  lastDeepGrowthTsRef.current = kp.timestamp;
-                } else if (deepBefore == null && deepNow != null) {
-                  lastDeepGrowthTsRef.current = kp.timestamp;
-                }
-
-                const risingOnScreen = wy < deepNow - RISE_FROM_DEEP_EPS;
-                if (risingOnScreen && downswingEndTsRef.current == null) {
-                  downswingEndTsRef.current = kp.timestamp;
-                }
-
-                const downswingEndTs = downswingEndTsRef.current;
-                if (
-                  downswingEndTs != null &&
-                  (kp.timestamp - downswingEndTs >= FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS ||
-                    wy < deepNow - FOLLOW_THROUGH_RISE_FROM_DEEP_Y)
-                ) {
-                  setRecordedFrames(recordedRef.current);
-                  setStatus('completed');
-                  return;
+                const risingOnScreen = deepNow != null && wy < deepNow - RISE_FROM_DEEP_EPS;
+                if (risingOnScreen && impactTsRef.current == null) {
+                  const impactIndex =
+                    deepFrameIndexRef.current != null
+                      ? deepFrameIndexRef.current
+                      : Math.max(0, recordedRef.current.length - 2);
+                  const impactFrame = recordedRef.current[impactIndex];
+                  analysisFramesRef.current = recordedRef.current.slice(0, impactIndex + 1);
+                  impactTsRef.current = impactFrame?.timestamp ?? kp.timestamp;
+                  replayTailEndTsRef.current = impactTsRef.current + REPLAY_TAIL_AFTER_IMPACT_MS;
                 }
 
               }
-            } else if (hasExitedApexRef.current && downswingEndTsRef.current == null) {
-              downswingEndTsRef.current = kp.timestamp;
-            }
-
-            const downswingEndTs = downswingEndTsRef.current;
-            if (
-              downswingEndTs != null &&
-              kp.timestamp - downswingEndTs >= FOLLOW_THROUGH_AFTER_DOWNSWING_END_MS
-            ) {
-              setRecordedFrames(recordedRef.current);
-              setStatus('completed');
-              return;
-            }
-
-            const apexExitTs = apexExitTsRef.current;
-            if (
+            } else if (
               hasExitedApexRef.current &&
-              apexExitTs != null &&
-              kp.timestamp - apexExitTs >= FOLLOW_THROUGH_AFTER_APEX_EXIT_MS
+              impactTsRef.current == null &&
+              deepFrameIndexRef.current != null
             ) {
-              setRecordedFrames(recordedRef.current);
-              setStatus('completed');
-              return;
-            }
-
-            // End even when this frame has no wrist/elbow y (hands behind body): depth has plateaued long enough.
-            const plateauTs = lastDeepGrowthTsRef.current;
-            if (
-              hasExitedApexRef.current &&
-              plateauTs != null &&
-              elapsed >= MIN_RECORDING_BEFORE_PLATEAU_MS &&
-              kp.timestamp - plateauTs >= POST_DEEP_PLATEAU_MS
-            ) {
-              setRecordedFrames(recordedRef.current);
-              setStatus('completed');
-              return;
+              const impactIndex = deepFrameIndexRef.current;
+              const impactFrame = recordedRef.current[impactIndex];
+              analysisFramesRef.current = recordedRef.current.slice(0, impactIndex + 1);
+              impactTsRef.current = impactFrame?.timestamp ?? kp.timestamp;
+              replayTailEndTsRef.current = impactTsRef.current + REPLAY_TAIL_AFTER_IMPACT_MS;
             }
           }
         }
@@ -402,7 +384,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
   const arm = useCallback(() => {
     recordedRef.current = [];
     prerollRef.current = [];
-    setRecordedFrames([]);
+    analysisFramesRef.current = [];
+    setAnalysisFrames([]);
+    setReplayFrames([]);
     fullBodyFramedRef.current = true;
     setFullBodyFramed(true);
     lastMotionSampleRef.current = null;
@@ -414,15 +398,18 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     hasExitedApexRef.current = false;
     apexExitTsRef.current = null;
     deepYRef.current = null;
-    downswingEndTsRef.current = null;
-    lastDeepGrowthTsRef.current = null;
+    deepFrameIndexRef.current = null;
+    impactTsRef.current = null;
+    replayTailEndTsRef.current = null;
     setStatus('armed_waiting_still');
   }, []);
 
   const cancel = useCallback(() => {
     recordedRef.current = [];
     prerollRef.current = [];
-    setRecordedFrames([]);
+    analysisFramesRef.current = [];
+    setAnalysisFrames([]);
+    setReplayFrames([]);
     fullBodyFramedRef.current = true;
     setFullBodyFramed(true);
     lastMotionSampleRef.current = null;
@@ -434,8 +421,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     hasExitedApexRef.current = false;
     apexExitTsRef.current = null;
     deepYRef.current = null;
-    downswingEndTsRef.current = null;
-    lastDeepGrowthTsRef.current = null;
+    deepFrameIndexRef.current = null;
+    impactTsRef.current = null;
+    replayTailEndTsRef.current = null;
     setStatus('idle');
   }, []);
 
@@ -448,7 +436,9 @@ export function useAutoSwingCapture(frameData: FrameData | null): UseAutoSwingCa
     isRecording,
     isArmed,
     fullBodyFramed: status === 'armed_waiting_still' ? fullBodyFramed : true,
-    recordedFrames,
+    analysisFrames,
+    replayFrames,
+    recordedFrames: replayFrames,
     arm,
     cancel,
     reset,

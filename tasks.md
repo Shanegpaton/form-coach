@@ -2,7 +2,7 @@
 
 ## Current Priorities
 
-### 1. Rework AI Coach
+### 1. Rework AI Coach. - drafted
 
 **Goal:** Allow users to receive custom golf swing drills and coaching based on their swing metrics. Users should also be able to talk with their AI coach and provide extra context about what they are struggling with.
 
@@ -28,19 +28,10 @@
 
 ---
 
-### 2. Improve Instructions UI
-
-**Goal:** Replace the large instructions section at the top of the page with a smaller help/how-to-use icon.
-
-#### Tasks
-- Move current instructions into a modal, drawer, or popover.
-- Add a small help icon near the top corner.
-- Ensure users can reopen instructions whenever needed.
-- Reduce unnecessary scrolling on the main page.
-
----
-
 ## Bugs
+
+### Frame impact
+- the tag in the ui for the pose replay says both downswing and impact when it should just say impact for that frame. 
 
 ### Video / Pose Switching
 - After switching between pose mode and video mode, the first few frames sometimes show the first frame of the recording not the swing. It switches to the first frames of the swing after watching it.
