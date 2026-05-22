@@ -1,10 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DRIVER_BENCHMARK_VIDEO_URLS } from '../lib/swing/driverBenchmarkVideos';
 import type { Joint, Keypoints } from '../hooks/useSwingRecorder';
+import { SWING_CLUBS, type SwingClubId } from '../lib/swing/clubConfig';
+import { REFERENCE_SWINGS_BY_CLUB } from '../lib/swing/referenceVideos';
 
 type SwingReplayComparisonProps = {
+  club: SwingClubId;
   frames: Keypoints[];
   swingVideoUrl: string | null;
   swingVideoClipStartSeconds?: number;
@@ -49,13 +51,6 @@ const KEYPOINTS: KeypointName[] = [
   'leftAnkle',
   'rightAnkle',
 ];
-
-const REFERENCE_SWINGS = [
-  { label: 'Billy driver', src: DRIVER_BENCHMARK_VIDEO_URLS[0] },
-  { label: 'Dan driver', src: DRIVER_BENCHMARK_VIDEO_URLS[1] },
-  { label: 'Ian driver', src: DRIVER_BENCHMARK_VIDEO_URLS[2] },
-  { label: 'Rickie driver', src: DRIVER_BENCHMARK_VIDEO_URLS[3] },
-] as const;
 
 const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 const VIDEO_STEP_SECONDS = 1 / 30;
@@ -186,6 +181,7 @@ function validVideoSize(size: SwingReplayComparisonProps['swingVideoSize']) {
 }
 
 export function SwingReplayComparison({
+  club,
   frames,
   swingVideoUrl,
   swingVideoClipStartSeconds = 0,
@@ -201,7 +197,10 @@ export function SwingReplayComparison({
   const lastPoseTickRef = useRef<number | null>(null);
 
   const [userMode, setUserMode] = useState<UserReplayMode>(swingVideoUrl ? 'video' : 'pose');
-  const [selectedReference, setSelectedReference] = useState<string>(REFERENCE_SWINGS[3].src);
+  const referenceSwings = REFERENCE_SWINGS_BY_CLUB[club];
+  const [selectedReference, setSelectedReference] = useState<string>(
+    referenceSwings[referenceSwings.length - 1]?.src ?? '',
+  );
 
   const [poseProgress, setPoseProgress] = useState(0);
   const [isPosePlaying, setIsPosePlaying] = useState(false);
@@ -463,7 +462,7 @@ export function SwingReplayComparison({
             Replay comparison
           </h3>
           <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-            Review your swing and a professional driver reference with separate controls.
+            Review your swing and a {SWING_CLUBS[club].referenceLabel} with separate controls.
           </p>
         </div>
         <label className="text-sm text-zinc-600 dark:text-zinc-300">
@@ -479,7 +478,7 @@ export function SwingReplayComparison({
             }}
             className="min-h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           >
-            {REFERENCE_SWINGS.map((reference) => (
+            {referenceSwings.map((reference) => (
               <option key={reference.src} value={reference.src}>
                 {reference.label}
               </option>
@@ -783,7 +782,7 @@ export function SwingReplayComparison({
               onEnded={() => setIsProPlaying(false)}
             />
             <figcaption className="border-t border-white/10 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-              Professional driver reference
+              {SWING_CLUBS[club].referenceLabel}
             </figcaption>
           </figure>
 

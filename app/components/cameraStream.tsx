@@ -17,6 +17,7 @@ import { useAutoSwingCapture } from '../hooks/useAutoSwingCapture';
 import type { Keypoints } from '../hooks/useSwingRecorder';
 import { CoachMarkdown } from './CoachMarkdown';
 import { SwingReplayComparison } from './SwingReplayComparison';
+import { SWING_CLUBS, type SwingClubId } from '../lib/swing/clubConfig';
 
 type PoseColors = { landmark: string; connector: string };
 type VideoSize = { width: number; height: number };
@@ -134,6 +135,8 @@ export default function CameraStream() {
   const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
   const [swingVideoSize, setSwingVideoSize] = useState<VideoSize | null>(null);
   const [demoFrames, setDemoFrames] = useState<Keypoints[] | null>(null);
+  const [selectedClub, setSelectedClub] = useState<SwingClubId>('driver');
+  const [lastSwingClub, setLastSwingClub] = useState<SwingClubId>('driver');
   const displayFrames = demoFrames ?? recordedFrames;
 
   const swingFindings = useMemo(
@@ -244,6 +247,7 @@ export default function CameraStream() {
           ? { width: video.videoWidth, height: video.videoHeight }
           : null,
       );
+      setLastSwingClub(selectedClub);
       setLastSwing(metrics ?? null);
       setCoachText('');
       setCoachError(null);
@@ -253,7 +257,7 @@ export default function CameraStream() {
       setDemoFrames(null);
       setCoachConsumedForCapture(false);
     }
-  }, [status, recordedFrames]);
+  }, [status, recordedFrames, selectedClub]);
 
   useEffect(() => {
     const stopSwingVideoRecording = (keepVideo: boolean) => {
@@ -353,6 +357,7 @@ export default function CameraStream() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           swing: lastSwing,
+          club: lastSwingClub,
           findings: coachFindings,
           userContext: coachContext.trim(),
           corrections: Object.fromEntries(
@@ -449,6 +454,7 @@ export default function CameraStream() {
     const frames = createDemoSwingFrames();
     const metrics = calculateSwingMetrics(frames);
     setDemoFrames(frames);
+    setLastSwingClub(selectedClub);
     setLastSwing(metrics ?? null);
     setSwingVideoUrl((previousUrl) => {
       if (previousUrl) URL.revokeObjectURL(previousUrl);
@@ -507,6 +513,33 @@ export default function CameraStream() {
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-5 sm:py-4">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Swing club
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+              Choose the club before arming the camera.
+            </p>
+          </div>
+          <div className="inline-flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
+            {(Object.keys(SWING_CLUBS) as SwingClubId[]).map((clubId) => (
+              <button
+                key={clubId}
+                type="button"
+                disabled={isArmed || isRecording || cameraStartPending}
+                className={`min-h-9 rounded-md px-3 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  selectedClub === clubId
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                }`}
+                onClick={() => setSelectedClub(clubId)}
+              >
+                {SWING_CLUBS[clubId].label}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{statusMessage}</p>
         {frameHint ? (
           <p
@@ -551,6 +584,12 @@ export default function CameraStream() {
             Last capture
           </h3>
           <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            <div>
+              <dt className="text-zinc-500 dark:text-zinc-400">Club</dt>
+              <dd className="font-medium text-zinc-900 dark:text-zinc-100">
+                {SWING_CLUBS[lastSwingClub].shortLabel}
+              </dd>
+            </div>
             {durationSec ? (
               <div>
                 <dt className="text-zinc-500 dark:text-zinc-400">Duration</dt>
@@ -569,7 +608,8 @@ export default function CameraStream() {
 
       {lastSwing ? (
         <SwingReplayComparison
-          key={`${displayFrames[0]?.timestamp ?? 'last-swing'}:${swingVideoUrl ?? 'pose'}:${swingVideoClipStartSeconds.toFixed(3)}`}
+          key={`${lastSwingClub}:${displayFrames[0]?.timestamp ?? 'last-swing'}:${swingVideoUrl ?? 'pose'}:${swingVideoClipStartSeconds.toFixed(3)}`}
+          club={lastSwingClub}
           frames={displayFrames}
           swingVideoUrl={swingVideoUrl}
           swingVideoClipStartSeconds={swingVideoClipStartSeconds}
