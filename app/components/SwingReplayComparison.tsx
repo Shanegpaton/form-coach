@@ -432,6 +432,30 @@ export function SwingReplayComparison({
     setIsUserVideoPlaying(false);
   }
 
+  function switchToUserVideo() {
+    pauseUserReplay();
+    if (effectiveUserMode === 'video') return;
+    const videoDurationBound =
+      userVideoReplayDuration > 0 ? userVideoReplayDuration : poseDurationSeconds;
+    const nextVideoTime = Math.max(0, Math.min(videoDurationBound, poseElapsedSeconds));
+    setUserVideoTime(nextVideoTime);
+    setUserVideoReadyKey(null);
+    setUserMode('video');
+  }
+
+  function switchToUserPose() {
+    pauseUserReplay();
+    if (effectiveUserMode === 'pose') return;
+    const video = userVideoRef.current;
+    const currentVideoTime = video
+      ? Math.max(0, video.currentTime - userVideoClipStart)
+      : userVideoTime;
+    setPoseScrubProgress(
+      poseDurationSeconds > 0 ? Math.min(1, currentVideoTime / poseDurationSeconds) : 0,
+    );
+    setUserMode('pose');
+  }
+
   function stepUser(direction: -1 | 1) {
     pauseUserReplay();
     if (activeUserVideo) {
@@ -572,10 +596,7 @@ export function SwingReplayComparison({
                     : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800'
                 }`}
                 disabled={!swingVideoUrl}
-                onClick={() => {
-                  pauseUserReplay();
-                  setUserMode('video');
-                }}
+                onClick={switchToUserVideo}
               >
                 Video
               </button>
@@ -586,10 +607,7 @@ export function SwingReplayComparison({
                     ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                     : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800'
                 }`}
-                onClick={() => {
-                  pauseUserReplay();
-                  setUserMode('pose');
-                }}
+                onClick={switchToUserPose}
               >
                 Pose
               </button>
