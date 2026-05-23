@@ -26,6 +26,12 @@
   - swing improvement priorities
 - Allow the user to chat with the AI coach about specific swing issues.
 
+
+### 2. Add club path tracking
+
+**Goal:** Do research on how I can track a users golf club head or swing path to get more accurate reading of the swing.
+
+
 ---
 
 ## Bugs

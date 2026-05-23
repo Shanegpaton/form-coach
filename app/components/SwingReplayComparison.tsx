@@ -222,6 +222,7 @@ export function SwingReplayComparison({
   const proVideoRef = useRef<HTMLVideoElement | null>(null);
   const poseAnimationRef = useRef<number>(0);
   const lastPoseTickRef = useRef<number | null>(null);
+  const userVideoSyncRef = useRef<number>(0);
 
   const [userMode, setUserMode] = useState<UserReplayMode>(swingVideoUrl ? 'video' : 'pose');
   const referenceSwings = REFERENCE_SWINGS_BY_CLUB[club];
@@ -306,8 +307,8 @@ export function SwingReplayComparison({
     );
   }, [userVideoReplayDuration, userVideoStepSeconds]);
   const capturedUserVideoFrameTimes = useMemo(
-    () =>
-      swingVideoFrameTimesSeconds
+    () => {
+      const times = swingVideoFrameTimesSeconds
         .filter(
           (seconds) =>
             Number.isFinite(seconds) &&
@@ -315,7 +316,14 @@ export function SwingReplayComparison({
             (userVideoReplayDuration <= 0 || seconds <= userVideoReplayDuration + 0.001),
         )
         .map((seconds) => Math.max(0, Math.min(userVideoReplayDuration, seconds)))
-        .sort((a, b) => a - b),
+        .sort((a, b) => a - b);
+      if (times.length > 0 && userVideoReplayDuration > 0) {
+        times.push(0, userVideoReplayDuration);
+      }
+      return Array.from(new Set(times.map((seconds) => Number(seconds.toFixed(4))))).sort(
+        (a, b) => a - b,
+      );
+    },
     [swingVideoFrameTimesSeconds, userVideoReplayDuration],
   );
   const userVideoFrameTimes =
@@ -386,6 +394,69 @@ export function SwingReplayComparison({
       video.pause();
     }
   }, [activeUserVideo, isUserVideoPlaying, userSpeed, swingVideoUrl]);
+
+  const syncUserVideoTime = useCallback(
+    (video: HTMLVideoElement) => {
+      if (video.currentTime < userVideoClipStart) {
+        video.currentTime = userVideoClipStart;
+        setUserVideoTime(0);
+        return;
+      }
+
+      const clipEnd = userVideoClipStart + userVideoReplayDuration;
+      const nextTime = Math.min(
+        Math.max(0, video.currentTime - userVideoClipStart),
+        userVideoReplayDuration || video.currentTime,
+      );
+
+      if (userVideoReplayDuration > 0 && video.currentTime >= clipEnd) {
+        video.pause();
+        video.currentTime = clipEnd;
+        setUserVideoTime(userVideoReplayDuration);
+        setIsUserVideoPlaying(false);
+        return;
+      }
+
+      setUserVideoTime(nextTime);
+    },
+    [userVideoClipStart, userVideoReplayDuration],
+  );
+
+  useEffect(() => {
+    const video = userVideoRef.current;
+    if (!activeUserVideo || !isUserVideoPlaying || !video) return;
+
+    let animationFrameId = 0;
+    let videoFrameCallbackId = 0;
+    let cancelled = false;
+
+    const schedule = () => {
+      if (cancelled) return;
+      if (video.requestVideoFrameCallback) {
+        videoFrameCallbackId = video.requestVideoFrameCallback(() => {
+          syncUserVideoTime(video);
+          schedule();
+        });
+        userVideoSyncRef.current = videoFrameCallbackId;
+      } else {
+        animationFrameId = requestAnimationFrame(() => {
+          syncUserVideoTime(video);
+          schedule();
+        });
+        userVideoSyncRef.current = animationFrameId;
+      }
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (videoFrameCallbackId && video.cancelVideoFrameCallback) {
+        video.cancelVideoFrameCallback(videoFrameCallbackId);
+      }
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      userVideoSyncRef.current = 0;
+    };
+  }, [activeUserVideo, isUserVideoPlaying, syncUserVideoTime, swingVideoUrl]);
 
   useEffect(() => {
     const video = proVideoRef.current;
@@ -638,33 +709,25 @@ export function SwingReplayComparison({
                     }
                   }}
                   onSeeked={(event) => {
+                    syncUserVideoTime(event.currentTarget);
                     if (event.currentTarget.currentTime >= userVideoClipStart - 0.02) {
                       setUserVideoReadyKey(userVideoClipKey);
                     }
                   }}
                   onTimeUpdate={(event) => {
-                    const video = event.currentTarget;
-                    const clipEnd = userVideoClipStart + userVideoReplayDuration;
-                    if (!userVideoReadyAtClipStart && video.currentTime >= userVideoClipStart - 0.02) {
+                    if (
+                      !userVideoReadyAtClipStart &&
+                      event.currentTarget.currentTime >= userVideoClipStart - 0.02
+                    ) {
                       setUserVideoReadyKey(userVideoClipKey);
                     }
-                    if (video.currentTime < userVideoClipStart) {
-                      video.currentTime = userVideoClipStart;
-                      setUserVideoTime(0);
-                      return;
-                    }
-                    const nextTime = Math.min(
-                      Math.max(0, video.currentTime - userVideoClipStart),
-                      userVideoReplayDuration || video.currentTime,
-                    );
-                    if (userVideoReplayDuration > 0 && video.currentTime >= clipEnd) {
-                      video.pause();
-                      video.currentTime = clipEnd;
-                      setIsUserVideoPlaying(false);
-                    }
-                    setUserVideoTime(nextTime);
+                    syncUserVideoTime(event.currentTarget);
                   }}
-                  onEnded={() => setIsUserVideoPlaying(false)}
+                  onEnded={(event) => {
+                    syncUserVideoTime(event.currentTarget);
+                    setUserVideoTime(userVideoReplayDuration);
+                    setIsUserVideoPlaying(false);
+                  }}
                 />
                 {!userVideoReadyAtClipStart ? (
                   <div className="absolute inset-0 grid place-items-center bg-zinc-950 text-sm text-zinc-300">
