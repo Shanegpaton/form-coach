@@ -21,6 +21,11 @@ import { SWING_CLUBS, type SwingClubId } from '../lib/swing/clubConfig';
 
 type PoseColors = { landmark: string; connector: string };
 type VideoSize = { width: number; height: number };
+type CoachMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 function getPoseColors(status: string, fullBodyFramed: boolean): PoseColors {
   if (status === 'armed_waiting_still' && !fullBodyFramed) {
@@ -124,11 +129,10 @@ export default function CameraStream() {
   const poseColors = useMemo(() => getPoseColors(status, fullBodyFramed), [status, fullBodyFramed]);
 
   const [lastSwing, setLastSwing] = useState<SwingAnalysis | null>(null);
-  const [coachText, setCoachText] = useState<string>('');
+  const [coachMessages, setCoachMessages] = useState<CoachMessage[]>([]);
+  const [coachDraft, setCoachDraft] = useState('');
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
-  /** One coach run per capture; cleared when a new swing completes. */
-  const [coachConsumedForCapture, setCoachConsumedForCapture] = useState(false);
   const [coachContext, setCoachContext] = useState('');
   const [findingCorrections, setFindingCorrections] = useState<Record<string, string>>({});
   const [findingPriorityOverrides, setFindingPriorityOverrides] = useState<Record<string, number>>({});
@@ -253,13 +257,13 @@ export default function CameraStream() {
       );
       setLastSwingClub(selectedClub);
       setLastSwing(metrics ?? null);
-      setCoachText('');
+      setCoachMessages([]);
+      setCoachDraft('');
       setCoachError(null);
       setCoachContext('');
       setFindingCorrections({});
       setFindingPriorityOverrides({});
       setDemoFrames(null);
-      setCoachConsumedForCapture(false);
     }
   }, [status, analysisFrames, selectedClub]);
 
@@ -422,12 +426,17 @@ export default function CameraStream() {
     };
   }, []);
 
-  async function requestGeminiCoach() {
-    if (!lastSwing || coachConsumedForCapture || coachLoading) return;
-    setCoachConsumedForCapture(true);
+  async function requestGeminiCoach(nextMessages: CoachMessage[] = coachMessages) {
+    if (!lastSwing || coachLoading) return;
+    const assistantMessageId = `assistant-${Date.now()}`;
+    const messagesWithPlaceholder: CoachMessage[] = [
+      ...nextMessages,
+      { id: assistantMessageId, role: 'assistant', content: '' },
+    ];
+
+    setCoachMessages(messagesWithPlaceholder);
     setCoachLoading(true);
     setCoachError(null);
-    setCoachText('');
     try {
       const res = await fetch('/api/swing/coach', {
         method: 'POST',
@@ -443,6 +452,7 @@ export default function CameraStream() {
               .filter(([, value]) => value.length > 0),
           ),
           priorityOverrides: findingPriorityOverrides,
+          messages: nextMessages.map(({ role, content }) => ({ role, content })),
         }),
       });
       if (!res.ok) {
@@ -466,11 +476,19 @@ export default function CameraStream() {
         const { done, value } = await reader.read();
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
-        setCoachText(accumulated);
+        setCoachMessages((current) =>
+          current.map((message) =>
+            message.id === assistantMessageId ? { ...message, content: accumulated } : message,
+          ),
+        );
       }
       accumulated += decoder.decode();
       if (accumulated.length > 0) {
-        setCoachText(accumulated);
+        setCoachMessages((current) =>
+          current.map((message) =>
+            message.id === assistantMessageId ? { ...message, content: accumulated } : message,
+          ),
+        );
       }
       if (!accumulated.trim()) {
         setCoachError('Empty response from coach API');
@@ -480,6 +498,17 @@ export default function CameraStream() {
     } finally {
       setCoachLoading(false);
     }
+  }
+
+  function submitCoachFollowUp() {
+    const content = coachDraft.trim();
+    if (!content || coachLoading) return;
+    const nextMessages: CoachMessage[] = [
+      ...coachMessages,
+      { id: `user-${Date.now()}`, role: 'user', content },
+    ];
+    setCoachDraft('');
+    void requestGeminiCoach(nextMessages);
   }
 
   const buttonLabel =
@@ -515,6 +544,8 @@ export default function CameraStream() {
         setSwingVideoSize(null);
         setDemoFrames(null);
         setCoachContext('');
+        setCoachMessages([]);
+        setCoachDraft('');
         setFindingCorrections({});
         setFindingPriorityOverrides({});
         await startCamera();
@@ -540,12 +571,12 @@ export default function CameraStream() {
     });
     setSwingVideoClipStartSeconds(0);
     setSwingVideoSize(null);
-    setCoachText('');
+    setCoachMessages([]);
+    setCoachDraft('');
     setCoachError(null);
     setCoachContext('');
     setFindingCorrections({});
     setFindingPriorityOverrides({});
-    setCoachConsumedForCapture(false);
   }
 
   const durationSec =
@@ -899,23 +930,16 @@ export default function CameraStream() {
                 Use your measured findings and any corrections above to get drills and a next-swing focus.
               </p>
             </div>
-            <button
-              type="button"
-              disabled={coachLoading || coachConsumedForCapture}
-              title={
-                coachConsumedForCapture && !coachLoading
-                  ? 'Coach already ran for this capture. Arm recording and take another swing to use Coach again.'
-                  : undefined
-              }
-              className={`inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
-              onClick={() => void requestGeminiCoach()}
-            >
-              {coachLoading
-                ? 'Coach is responding…'
-                : coachConsumedForCapture
-                  ? 'Coach already used'
-                  : 'Coach with AI'}
-            </button>
+            {coachMessages.length === 0 ? (
+              <button
+                type="button"
+                disabled={coachLoading}
+                className={`inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
+                onClick={() => void requestGeminiCoach()}
+              >
+                {coachLoading ? 'Coach is responding…' : 'Coach with AI'}
+              </button>
+            ) : null}
           </div>
 
           {coachError ? (
@@ -930,19 +954,64 @@ export default function CameraStream() {
             </div>
           ) : null}
 
-          {coachLoading || coachText ? (
-            <div className="relative mt-4 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-              {coachText ? (
-                <CoachMarkdown>{coachText}</CoachMarkdown>
-              ) : (
-                <p className="text-zinc-500 dark:text-zinc-400">Waiting for the first words…</p>
-              )}
-              {coachLoading ? (
-                <span
-                  className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-sm bg-zinc-400 align-[-0.15em] dark:bg-zinc-500"
-                  aria-hidden
-                />
-              ) : null}
+          {coachMessages.length > 0 ? (
+            <div className="mt-4 space-y-4">
+              <div className="space-y-3">
+                {coachMessages.map((message) =>
+                  message.role === 'user' ? (
+                    <div key={message.id} className="flex justify-end">
+                      <div className="max-w-[85%] rounded-lg bg-zinc-900 px-3 py-2 text-sm leading-relaxed text-white dark:bg-zinc-100 dark:text-zinc-900">
+                        {message.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={message.id}
+                      className="relative text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+                    >
+                      {message.content ? (
+                        <CoachMarkdown>{message.content}</CoachMarkdown>
+                      ) : (
+                        <p className="text-zinc-500 dark:text-zinc-400">
+                          Waiting for the first words…
+                        </p>
+                      )}
+                      {coachLoading && message.id === coachMessages.at(-1)?.id ? (
+                        <span
+                          className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-sm bg-zinc-400 align-[-0.15em] dark:bg-zinc-500"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                  ),
+                )}
+              </div>
+
+              <form
+                className="flex flex-col gap-2 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitCoachFollowUp();
+                }}
+              >
+                <label className="flex-1">
+                  <span className="sr-only">Ask the AI coach a follow-up</span>
+                  <textarea
+                    value={coachDraft}
+                    onChange={(event) => setCoachDraft(event.target.value)}
+                    rows={2}
+                    placeholder="Ask for a drill, explain what you felt, or ask what to focus on next."
+                    className="block w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={coachLoading || coachDraft.trim().length === 0}
+                  className={`inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:w-auto ${btnFocus}`}
+                >
+                  {coachLoading ? 'Responding…' : 'Send'}
+                </button>
+              </form>
             </div>
           ) : null}
         </section>

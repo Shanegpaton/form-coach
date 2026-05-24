@@ -21,6 +21,11 @@ type ProRangePayload = {
   bandsNote?: string;
 };
 
+type CoachChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 function buildMetricImportanceForKeys(
   numericKeys: string[],
   map: Record<string, number>,
@@ -87,7 +92,7 @@ The user's numbers come from normalized landmarks (MediaPipe-style): torso-scale
 Reference JSON includes numericRanges (min/max/mean from a small pro sample), bands (padded low/high for coaching tolerance), **metricImportance** (1–5 per stat key), and optionally **metricNotes** (caveats for noisy metrics).
 
 Metric importance (critical):
-- **Higher scores = prioritize** that stat when choosing what to coach (ball flight, consistency).
+- **Higher scores = prioritize** that stat when choosing what to coach.
 - If a metric is missing from metricImportance, it defaults to ${DEFAULT_METRIC_IMPORTANCE} (medium).
 - When several things look "off," focus the 2–3 main talking points on **higher** importance metrics first; lower scores matter only if they clearly drive a big miss.
 - **metricNotes** (when present) describe weak or ambiguous measurements—do not treat those stats like spine angle or path; phrase feedback carefully.
@@ -100,9 +105,9 @@ Timing vs pros (critical):
 
 Your job:
 - Base your feedback mainly on the displayed findings: swing path, spine angle/bend, knee flex, and head movement.
-- Treat user corrections/context as important coaching context. If user context conflicts with a measured finding, acknowledge it by coaching the pattern they felt without pretending the measurement is certain.
+- Treat user corrections/context as important coaching context. If user context conflicts with a measured finding, acknowledge it by coaching the pattern they felt without pretending the measurement is certain. Treat their correction as the new source of truth, rather than relying on the swing metrics.
 - Treat user priority overrides as explicit direction about what the golfer wants more or less feedback on. A high-focus override can be coached even if another metric is numerically more severe.
-- Identify ONLY the 2–3 most important issues—**weighted by displayed finding priority and metricImportance**, not by how many numbers diverge (focus on ball flight + consistency).
+- Identify ONLY the 2–3 most important issues—**weighted by displayed finding priority and metricImportance**, not by how many numbers diverge.
 - Explain what each issue likely causes.
 - Give custom drills, short coaching tips, and one clear next-swing focus.
 - Do not make hip movement or timing a primary topic unless the user explicitly asks about it.
@@ -110,7 +115,7 @@ Your job:
 Style rules (VERY IMPORTANT):
 - Speak like a coach, NOT a data analyst.
 - **No opening filler:** Do not start with praise, hedging, or a warm-up summary (e.g. "overall you've got some good elements", "your swing looks solid but", "there's a lot to like", "first off the good news"). Jump straight into the **first** highest-priority issue in plain language—the first sentence should already be coaching content.
-- Do NOT include raw numbers (degrees, milliseconds, etc.) unless absolutely necessary.
+- Do NOT include raw numbers (degrees, milliseconds, etc.) unless absolutely necessary, since most numbers are normalized they will not make sense to the user.
 - Instead, describe differences using terms like:
   "slightly", "too much", "very upright", "more than typical", "less than ideal".
 - Only mention numbers if it helps emphasize a major issue (and keep it minimal).
@@ -123,6 +128,13 @@ Output format:
 - Use **bold** for key concepts and fixes.
 - Keep it clear, simple, and actionable.
 - Do NOT overwhelm the user with many details.
+
+Follow up coaching:
+- If the user sends another message, respond as a follow-up in the same coaching conversation.
+- Stay grounded in the displayed findings, user corrections, and swing metrics above.
+- If they ask for drills, give drills. If they add a feel or correction, adapt the coaching without pretending the 2D measurement is certain.
+- you do not need to repeat the entire coaching process—focus on responding to their new message with relevant feedback and drills, rather than rehashing all the original findings.
+- you do not need to cretae another list of drill or a key next swing takeaway unless the user specifically asks for it.
 `;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -167,6 +179,21 @@ function readOptionalFindings(v: unknown): SwingFinding[] {
   return v.filter(isRecord).slice(0, 4) as unknown as SwingFinding[];
 }
 
+function readOptionalMessages(v: unknown): CoachChatMessage[] {
+  if (!Array.isArray(v)) return [];
+  const out: CoachChatMessage[] = [];
+  for (const item of v) {
+    if (!isRecord(item)) continue;
+    const role = item.role;
+    const content = item.content;
+    if ((role === "user" || role === "assistant") && typeof content === "string") {
+      const trimmed = content.trim().slice(0, 1500);
+      if (trimmed.length > 0) out.push({ role, content: trimmed });
+    }
+  }
+  return out.slice(-12);
+}
+
 export async function POST(req: Request) {
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
@@ -194,6 +221,7 @@ export async function POST(req: Request) {
   const userContext = readOptionalString(body.userContext);
   const corrections = readOptionalStringMap(body.corrections);
   const priorityOverrides = readOptionalNumberMap(body.priorityOverrides);
+  const messages = readOptionalMessages(body.messages);
   const club: SwingClubId = isSwingClubId(body.club) ? body.club : "driver";
   const clubReference = referenceForClub(club);
   const ranges =
@@ -220,7 +248,11 @@ export async function POST(req: Request) {
     referenceRanges: rangesForCoach,
   };
 
-  const userPrompt = `## Displayed swing findings (JSON)\nThese are the findings shown to the user. Base the coaching primarily on these. The priority field may include user overrides.\n\`\`\`json\n${JSON.stringify(findings, null, 2)}\n\`\`\`\n\n## User corrections, context, and priority overrides (JSON)\n\`\`\`json\n${JSON.stringify({ userContext, corrections, priorityOverrides }, null, 2)}\n\`\`\`\n\n## User swing raw metrics (JSON)\nUse raw metrics only as backup context; do not turn this into a data report.\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\nGive coaching feedback from the displayed findings and user context. Weight issues by finding priority, user priority overrides, and metricImportance. **First sentence = first concrete issue**—no praise-only or "overall" intro paragraph.`;
+  const userPrompt = `## Displayed swing findings (JSON)\nThese are the findings shown to the user. Base the coaching primarily on these. The priority field may include user overrides.\n\`\`\`json\n${JSON.stringify(findings, null, 2)}\n\`\`\`\n\n## User corrections, context, and priority overrides (JSON)\n\`\`\`json\n${JSON.stringify({ userContext, corrections, priorityOverrides }, null, 2)}\n\`\`\`\n\n## User swing raw metrics (JSON)\nUse raw metrics only as backup context; do not turn this into a data report.\n\`\`\`json\n${JSON.stringify(swing, null, 2)}\n\`\`\`\n\n## Pro reference + coaching priorities (JSON; club: ${String((rangesForCoach as { club?: string }).club ?? "unknown")})\nPro timing/duration aggregates are omitted from referenceRanges—they were measured differently from live capture. Use **metricImportance** to decide which deviations matter most.\n\`\`\`json\n${JSON.stringify(coachReferencePayload, null, 2)}\n\`\`\`\n\n## Conversation so far (JSON)\n\`\`\`json\n${JSON.stringify(messages, null, 2)}\n\`\`\`\n\n${
+    messages.length > 0
+      ? "Answer the latest user message as a follow-up in this same coaching conversation. Stay grounded in the displayed findings, user corrections, and swing metrics above. If they ask for drills, give drills. If they add a feel or correction, adapt the coaching without pretending the 2D measurement is certain."
+      : "Give the initial coaching feedback from the displayed findings and user context. Weight issues by finding priority, user priority overrides, and metricImportance. **First sentence = first concrete issue**—no praise-only or \"overall\" intro paragraph."
+  }`;
 
   try {
     const result = streamText({
