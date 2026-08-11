@@ -7,7 +7,6 @@ import {
 } from '@mediapipe/tasks-vision';
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { calculateSwingMetrics, type SwingAnalysis } from '../lib/swing/calculateSwingMetrics';
-import { createDemoSwingFrames } from '../lib/swing/createDemoSwing';
 import {
   interpretSwingFindings,
   type SwingFinding,
@@ -142,10 +141,8 @@ export default function CameraStream() {
   const [swingVideoClipStartSeconds, setSwingVideoClipStartSeconds] = useState(0);
   const [swingVideoFrameTimesSeconds, setSwingVideoFrameTimesSeconds] = useState<number[]>([]);
   const [swingVideoSize, setSwingVideoSize] = useState<VideoSize | null>(null);
-  const [demoFrames, setDemoFrames] = useState<Keypoints[] | null>(null);
   const [selectedClub, setSelectedClub] = useState<SwingClubId>('driver');
   const [lastSwingClub, setLastSwingClub] = useState<SwingClubId>('driver');
-  const displayFrames = demoFrames ?? replayFrames;
 
   const swingFindings = useMemo(
     () => (lastSwing ? interpretSwingFindings(lastSwing) : []),
@@ -210,8 +207,8 @@ export default function CameraStream() {
   }, [status, fullBodyFramed, replayFrames.length]);
 
   useEffect(() => {
-    recordedFramesRef.current = displayFrames;
-  }, [displayFrames]);
+    recordedFramesRef.current = replayFrames;
+  }, [replayFrames]);
 
   useEffect(() => {
     const drawPose = (landmarksByPose: NormalizedLandmark[][], colors: PoseColors) => {
@@ -263,7 +260,6 @@ export default function CameraStream() {
       setCoachContext('');
       setFindingCorrections({});
       setFindingPriorityOverrides({});
-      setDemoFrames(null);
     }
   }, [status, analysisFrames, selectedClub]);
 
@@ -542,7 +538,6 @@ export default function CameraStream() {
         });
         setSwingVideoClipStartSeconds(0);
         setSwingVideoSize(null);
-        setDemoFrames(null);
         setCoachContext('');
         setCoachMessages([]);
         setCoachDraft('');
@@ -556,27 +551,6 @@ export default function CameraStream() {
         setCameraStartPending(false);
       }
     })();
-  }
-
-  function loadDemoSwing() {
-    const frames = createDemoSwingFrames();
-    const metrics = calculateSwingMetrics(frames);
-    setDemoFrames(frames);
-    setLastSwingClub(selectedClub);
-    setLastSwing(metrics ?? null);
-    setSwingVideoUrl((previousUrl) => {
-      if (previousUrl) URL.revokeObjectURL(previousUrl);
-      swingVideoUrlRef.current = null;
-      return null;
-    });
-    setSwingVideoClipStartSeconds(0);
-    setSwingVideoSize(null);
-    setCoachMessages([]);
-    setCoachDraft('');
-    setCoachError(null);
-    setCoachContext('');
-    setFindingCorrections({});
-    setFindingPriorityOverrides({});
   }
 
   const durationSec =
@@ -673,14 +647,6 @@ export default function CameraStream() {
         >
           {buttonLabel}
         </button>
-        <button
-          type="button"
-          disabled={isArmed || isRecording}
-          className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:w-auto ${btnFocus}`}
-          onClick={loadDemoSwing}
-        >
-          Load demo swing
-        </button>
       </div>
 
       {lastSwing ? (
@@ -716,9 +682,9 @@ export default function CameraStream() {
 
       {lastSwing ? (
         <SwingReplayComparison
-          key={`${lastSwingClub}:${displayFrames[0]?.timestamp ?? 'last-swing'}:${swingVideoUrl ?? 'pose'}:${swingVideoClipStartSeconds.toFixed(3)}`}
+          key={`${lastSwingClub}:${replayFrames[0]?.timestamp ?? 'last-swing'}:${swingVideoUrl ?? 'pose'}:${swingVideoClipStartSeconds.toFixed(3)}`}
           club={lastSwingClub}
-          frames={displayFrames}
+          frames={replayFrames}
           swingVideoUrl={swingVideoUrl}
           swingVideoClipStartSeconds={swingVideoClipStartSeconds}
           swingVideoFrameTimesSeconds={swingVideoFrameTimesSeconds}
