@@ -12,8 +12,7 @@ This project captures a single driver swing from webcam video, computes biomecha
 ## Demo
 
 - Live app: [https://swing-coach-ochre.vercel.app](https://swing-coach-ochre.vercel.app/)
-- Short walkthrough video (60-90s): `ADD_VIDEO_URL`
-- Swing capture + coaching example GIF: `ADD_GIF_URL`
+- Short walkthrough video (60-90s): [Demo](https://drive.google.com/file/d/1L63OBpmEP_uShbdqeHFXm3vhkbdej6vC/view?usp=drive_link)
 
 ## Core Features
 
