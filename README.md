@@ -1,7 +1,7 @@
 # Computer Vision Swing Coach
 
-Real-time golf swing coaching with browser-based pose tracking and AI-generated feedback.  
-This project captures a single driver swing from webcam video, computes biomechanical metrics, and translates those into concise coaching cues.
+Browser-based golf swing coaching with pose tracking and AI-generated feedback.  
+This project captures a single driver swing from webcam video, computes biomechanical metrics, and translates those metrics into concise coaching cues.
 
 ## Why This Project
 
@@ -87,10 +87,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## What I Would Build Next
 
+- Validate metric quality across more camera angles, lighting conditions, and body types.
 - Save and compare multiple swings over time for progress tracking.
 - Add side-by-side frame overlays against reference swing phases.
 - Introduce confidence scoring per metric based on landmark quality/visibility.
 - Expand to club-specific models and coaching profiles.
+
+## Current Scope
+
+This is a prototype focused on a single-camera browser workflow. It is not a medical or professional coaching product; the core engineering work is the capture pipeline, metric extraction, and constrained feedback loop.
 
 ## Repository Guide
 
@@ -103,5 +108,5 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Contact
 
 Created by `Shane Paton`  
-LinkedIn: [www.linkedin.com/in/shanepaton](www.linkedin.com/in/shanepaton)  
-Portfolio: [shanepaton.com](shanepaton.com)
+LinkedIn: [www.linkedin.com/in/shanepaton](https://www.linkedin.com/in/shanepaton)  
+Portfolio: [shanepaton.com](https://shanepaton.com)
